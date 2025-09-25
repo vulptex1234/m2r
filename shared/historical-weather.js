@@ -1,6 +1,26 @@
 const path = require('path');
 
+// Clear require cache to avoid stale cached modules
+function clearAxiosCache() {
+  const axiosPaths = [
+    'axios',
+    path.resolve(__dirname, '../web-service/node_modules/axios'),
+    path.resolve(__dirname, '../cron-job/node_modules/axios')
+  ];
+
+  for (const axiosPath of axiosPaths) {
+    try {
+      delete require.cache[require.resolve(axiosPath)];
+    } catch (error) {
+      // Ignore if path doesn't exist
+    }
+  }
+}
+
 function loadAxios() {
+  // Clear cache first to ensure fresh load
+  clearAxiosCache();
+
   const candidates = [
     () => require('axios'),
     () => require(path.resolve(__dirname, '../web-service/node_modules/axios')),
@@ -8,7 +28,8 @@ function loadAxios() {
   ];
 
   let lastError;
-  for (const loader of candidates) {
+  for (let i = 0; i < candidates.length; i++) {
+    const loader = candidates[i];
     try {
       const mod = loader();
       // Ensure we get the actual axios function, not just the default property
@@ -16,13 +37,14 @@ function loadAxios() {
 
       // Verify that the get method exists
       if (typeof axiosInstance?.get === 'function') {
-        console.log('✅ axios loaded successfully with get method');
+        console.log(`✅ axios loaded successfully with get method from candidate ${i + 1}`);
         return axiosInstance;
       } else {
-        console.warn('⚠️ axios loaded but get method not found:', typeof axiosInstance?.get);
+        console.warn(`⚠️ axios loaded from candidate ${i + 1} but get method not found:`, typeof axiosInstance?.get);
+        console.warn('Module structure:', Object.keys(axiosInstance || {}));
       }
     } catch (error) {
-      console.warn('❌ Failed to load axios:', error.message);
+      console.warn(`❌ Failed to load axios from candidate ${i + 1}:`, error.message);
       lastError = error;
     }
   }
@@ -30,7 +52,14 @@ function loadAxios() {
   throw lastError || new Error('axios module not found or get method not available');
 }
 
-const axios = loadAxios();
+let axios;
+try {
+  axios = loadAxios();
+} catch (error) {
+  console.error('💥 Critical: Could not load axios at module level:', error.message);
+  // Fall back to lazy loading
+  axios = null;
+}
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -67,8 +96,20 @@ function normalizeWeatherEntry(entry, dt) {
 }
 
 async function fetchSinglePoint({apiKey, lat, lon, dateTime, units, lang}) {
+  // Ensure axios is loaded before use
+  if (!axios || typeof axios.get !== 'function') {
+    console.log('🔄 axios not available, attempting to reload...');
+    try {
+      axios = loadAxios();
+    } catch (error) {
+      throw new Error(`Failed to load axios for API call: ${error.message}`);
+    }
+  }
+
   const dt = Math.floor(dateTime.getTime() / 1000);
   const url = buildUrl({lat, lon, dt, apiKey, units, lang});
+
+  console.log(`🌐 Making API request to: ${url.substring(0, 100)}...`);
   const response = await axios.get(url);
   const payload = response.data;
 
