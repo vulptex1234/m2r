@@ -143,6 +143,47 @@ app.get('/api/historical', async (req, res) => {
   }
 });
 
+app.post('/api/measurements', async (req, res) => {
+  try {
+    await startup;
+    const { deviceId, temperature, humidity, recordedAt, payload } = req.body || {};
+
+    if (!deviceId) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    const tempValue = temperature !== undefined ? Number(temperature) : null;
+    if (tempValue !== null && Number.isNaN(tempValue)) {
+      return res.status(400).json({ error: 'temperature must be a number' });
+    }
+
+    const humidityValue = humidity !== undefined ? Number(humidity) : null;
+    if (humidityValue !== null && Number.isNaN(humidityValue)) {
+      return res.status(400).json({ error: 'humidity must be a number' });
+    }
+
+    if (recordedAt && Number.isNaN(new Date(recordedAt).getTime())) {
+      return res.status(400).json({ error: 'recordedAt must be a valid ISO date string' });
+    }
+
+    await insertDeviceMeasurement({
+      deviceId,
+      temperature: tempValue,
+      humidity: humidityValue,
+      recordedAt,
+      payload: payload ?? req.body
+    });
+
+    return res.status(201).json({ status: 'ok' });
+  } catch (error) {
+    console.error('[measurements] failed', error);
+    return res.status(500).json({
+      error: 'Failed to record measurement',
+      message: error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Historical weather API listening on port ${PORT}`);
 

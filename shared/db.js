@@ -64,6 +64,18 @@ async function initSchema() {
       generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  await pg.query(`
+    CREATE TABLE IF NOT EXISTS device_measurements (
+      id SERIAL PRIMARY KEY,
+      device_id TEXT NOT NULL,
+      temperature NUMERIC,
+      humidity NUMERIC,
+      recorded_at TIMESTAMPTZ,
+      payload JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 }
 
 module.exports = {

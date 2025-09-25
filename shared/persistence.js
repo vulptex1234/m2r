@@ -50,6 +50,27 @@ async function upsertHistoricalDay({ dateString, hourly, stats, lat, lon, units 
   }
 }
 
+async function insertDeviceMeasurement({ deviceId, temperature, humidity, recordedAt, payload }) {
+  if (!deviceId) {
+    throw new Error('deviceId is required');
+  }
+
+  await initSchema();
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO device_measurements (device_id, temperature, humidity, recorded_at, payload)
+     VALUES ($1, $2, $3, $4, $5::jsonb)`,
+    [
+      deviceId,
+      temperature != null ? Number(temperature) : null,
+      humidity != null ? Number(humidity) : null,
+      recordedAt ? new Date(recordedAt) : null,
+      payload ? JSON.stringify(payload) : null
+    ]
+  );
+}
+
 module.exports = {
-  upsertHistoricalDay
+  upsertHistoricalDay,
+  insertDeviceMeasurement
 };

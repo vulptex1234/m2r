@@ -34,6 +34,24 @@
 | `PGSSLMODE` | `require`（Render Postgres は SSL 必須）|
 | `CORS_ORIGIN` | Web Service で許可するオリジン（デフォルト `*`）|
 
+## 提供 API
+
+- `GET /health`  
+  稼働確認用エンドポイント。
+- `GET /api/historical`  
+  OpenWeather の過去データを提供するメイン API。クエリ `hours` または `date` を指定し、必要に応じて `refresh`, `lat`, `lon`, `units`, `lang`, `delayMs` で上書き可能。Postgres にキャッシュされたデータがあれば `source:"database"`、無ければ OpenWeather から取得して `source:"api"` として返却。
+- `POST /api/measurements`  
+  ESP32 などのデバイスから温度データを受け取る。リクエスト例:
+  ```json
+  {
+    "deviceId": "esp32-01",
+    "temperature": 24.6,
+    "humidity": 45.2,
+    "recordedAt": "2025-01-05T12:34:56Z"
+  }
+  ```
+  検証後 `device_measurements` テーブルに保存し、`201 {"status":"ok"}` を返す。追加フィールドは `payload` として JSON 形式で保持。
+
 ## 接続関係
 
 ```
