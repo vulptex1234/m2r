@@ -45,6 +45,13 @@ export const appConfig = {
     lon: 139.324,
     units: 'metric',
   },
+  api: {
+    // Backend API endpoints
+    baseUrl: 'https://m2r.onrender.com',
+    endpoints: {
+      historical: '/api/historical'
+    }
+  },
   ui: {
     refreshInterval: 30000, // 30 seconds
     chartMaxPoints: 100,

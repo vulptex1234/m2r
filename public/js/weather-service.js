@@ -75,7 +75,7 @@ export class WeatherService {
   }
 
   /**
-   * Get historical weather data (default: past 24 hours, hourly resolution)
+   * Get historical weather data using backend API (default: past 3 hours)
    * @param {number} hours - Total hours to look back
    * @returns {Promise<Array>} Array of historical weather entries
    */
@@ -90,85 +90,69 @@ export class WeatherService {
       }
     }
 
-    const historicalData = [];
+    try {
+      // Use backend API endpoint for historical data
+      const apiUrl = `${appConfig.api.baseUrl}${appConfig.api.endpoints.historical}?hours=${hours}`;
 
-    const { lat, lon, units } = appConfig.weather;
-    if (!this.apiKey || this.apiKey === 'REPLACE_WITH_YOUR_OPENWEATHER_API_KEY') {
-      throw new Error('Weather API key not configured');
-    }
+      console.log('🕰️ Fetching historical weather from backend API', { hours, apiUrl });
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-      throw new Error('Invalid coordinates for historical weather API');
-    }
-
-    const nowMs = Date.now();
-    const totalHours = Math.max(1, Math.floor(hours));
-    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-    console.log('🕰️ Fetching historical weather (hourly)', { hours: totalHours });
-
-    for (let offset = totalHours; offset >= 1; offset--) {
-      const targetTimeMs = nowMs - (offset * 60 * 60 * 1000);
-      const dt = Math.floor(targetTimeMs / 1000);
-      const url = `${this.baseUrl}/onecall/timemachine?lat=${lat}&lon=${lon}&dt=${dt}&appid=${this.apiKey}&units=${units}`;
-      const proxiedUrl = `${this.proxyUrl}${encodeURIComponent(url)}`;
-
-      try {
-        console.log('🕰️ Fetching historical point...', { hoursAgo: offset });
-        const response = await fetch(proxiedUrl);
-        if (!response.ok) {
-          throw new Error(`Historical API request failed: ${response.status}`);
-        }
-
-        const payload = await response.json();
-        const entry = payload?.data?.[0] || payload?.current || payload?.hourly?.[0];
-
-        if (!entry) {
-          console.warn('⚠️ Historical weather entry missing data, skipping');
-          continue;
-        }
-
-        const baseTimestamp = (entry.dt || dt) * 1000;
-        const weatherDetails = Array.isArray(entry.weather) ? entry.weather[0] : null;
-
-        historicalData.push({
-          timestamp: baseTimestamp,
-          dateTime: new Date(baseTimestamp),
-          temperature: typeof entry.temp === 'number' ? entry.temp : entry.main?.temp ?? null,
-          feelsLike: typeof entry.feels_like === 'number' ? entry.feels_like : entry.main?.feels_like ?? null,
-          humidity: entry.humidity ?? entry.main?.humidity ?? null,
-          pressure: entry.pressure ?? entry.main?.pressure ?? null,
-          description: weatherDetails?.description || '',
-          icon: weatherDetails?.icon || '',
-          windSpeed: entry.wind_speed ?? entry.windSpeed ?? entry.wind?.speed ?? null,
-          provider: 'openweathermap'
-        });
-
-      } catch (error) {
-        console.warn('⚠️ Historical weather fetch failed:', error);
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        throw new Error(`Backend API request failed: ${response.status} ${response.statusText}`);
       }
 
-      // Respect API rate limits between calls
-      await delay(1100);
-    }
+      const payload = await response.json();
 
-    if (historicalData.length) {
+      if (!payload.data || !Array.isArray(payload.data)) {
+        throw new Error('Invalid response format from backend API');
+      }
+
+      // Transform backend data to match expected format
+      const historicalData = payload.data.map(item => {
+        // Handle both database format and API format
+        const temp = item.temp ?? item.temperature ?? null;
+        const weather = item.weather ?? (item.raw?.weather?.[0]) ?? null;
+
+        return {
+          timestamp: item.timestamp,
+          dateTime: new Date(item.timestamp),
+          temperature: temp,
+          feelsLike: item.feels_like ?? item.feelsLike ?? null,
+          humidity: item.humidity ?? null,
+          pressure: item.pressure ?? null,
+          description: weather?.description || item.description || '',
+          icon: weather?.icon || item.icon || '',
+          windSpeed: item.wind_speed ?? item.windSpeed ?? null,
+          provider: 'backend-api'
+        };
+      }).filter(item => item.timestamp && item.temperature !== null);
+
+      // Sort by timestamp
       historicalData.sort((a, b) => a.timestamp - b.timestamp);
 
+      // Cache the result
       this.cache.set(cacheKey, {
         data: historicalData,
         timestamp: Date.now()
       });
 
-      console.log('✅ Historical weather data fetched:', {
+      console.log('✅ Historical weather data fetched from backend:', {
+        source: payload.source,
         points: historicalData.length,
-        range: `${historicalData[0].dateTime.toISOString()} - ${historicalData[historicalData.length - 1].dateTime.toISOString()}`
+        range: historicalData.length > 0
+          ? `${historicalData[0].dateTime.toISOString()} - ${historicalData[historicalData.length - 1].dateTime.toISOString()}`
+          : 'No data'
       });
-    } else {
-      console.warn('⚠️ No historical weather data available from OpenWeather API');
-    }
 
-    return historicalData;
+      return historicalData;
+
+    } catch (error) {
+      console.error('❌ Failed to fetch historical weather from backend:', error);
+
+      // Return empty array instead of throwing to prevent dashboard crash
+      console.log('⚠️ Returning empty historical weather data due to backend error');
+      return [];
+    }
   }
 
   /**
