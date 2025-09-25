@@ -190,6 +190,18 @@ class DashboardController {
             tension: 0.1
           },
           {
+            label: '過去の天気',
+            data: [],
+            borderColor: '#9C27B0',
+            backgroundColor: 'rgba(156, 39, 176, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1,
+            pointBackgroundColor: '#9C27B0',
+            pointBorderColor: '#9C27B0',
+            pointRadius: 4
+          },
+          {
             label: '予測温度',
             data: [],
             borderColor: '#FF9800',
@@ -268,7 +280,7 @@ class DashboardController {
       this.updateHistoricalWeatherDisplay(historicalWeather);
 
       // Update chart with measurements and forecast timeline
-      this.updateChart(measurements, fullForecastData);
+      this.updateChart(measurements, fullForecastData, this.historicalWeather);
 
       // Update data table
       this.updateDataTable(measurements.slice(0, 20));
@@ -534,7 +546,7 @@ class DashboardController {
   /**
    * Update chart with new data
    */
-  updateChart(measurements, fullForecastData = null) {
+  updateChart(measurements, fullForecastData = null, historicalWeather = null) {
     if (!this.chart) return;
 
     const now = new Date();
@@ -560,6 +572,19 @@ class DashboardController {
       return timeA - timeB;
     });
 
+    // Process historical weather data
+    let filteredHistoricalWeather = [];
+    if (historicalWeather && Array.isArray(historicalWeather)) {
+      filteredHistoricalWeather = historicalWeather.filter(item => {
+        const timestamp = item.timestamp || item.dateTime?.getTime();
+        return timestamp >= pastCutoff && timestamp <= now.getTime(); // Historical data is past data only
+      }).sort((a, b) => {
+        const timeA = a.timestamp || a.dateTime?.getTime();
+        const timeB = b.timestamp || b.dateTime?.getTime();
+        return timeA - timeB;
+      });
+    }
+
     // Process forecast data
     let forecastTimeline = [];
     if (fullForecastData?.timeline && Array.isArray(fullForecastData.timeline)) {
@@ -574,28 +599,43 @@ class DashboardController {
     }
 
     // If no data at all, try to show current forecast point
-    if (!filteredMeasurements.length && !forecastTimeline.length && fullForecastData?.current !== null) {
+    if (!filteredMeasurements.length && !filteredHistoricalWeather.length && !forecastTimeline.length && fullForecastData?.current !== null) {
       this.chart.data.labels = [this.formatTimeForChart(now)];
-      this.chart.data.datasets[0].data = [];
-      this.chart.data.datasets[1].data = [fullForecastData.current];
+      this.chart.data.datasets[0].data = []; // 実測温度
+      this.chart.data.datasets[1].data = []; // 過去の天気
+      this.chart.data.datasets[2].data = [fullForecastData.current]; // 予測温度
       this.chart.update('none');
 
       console.log('📊 Chart updated with single current forecast:', fullForecastData.current);
       return;
     }
 
-    // Combine measurement and forecast data for timeline
+    // Combine all data types for timeline
     const allDataPoints = [];
 
-    // Add measurement points (past data)
+    // Add measurement points (sensor data)
     filteredMeasurements.forEach(m => {
       const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt);
       allDataPoints.push({
         time,
         timestamp: time.getTime(),
         observed: m.observedC,
+        historical: null,
         forecast: m.forecastC || null,
         type: 'measurement'
+      });
+    });
+
+    // Add historical weather points (API weather data)
+    filteredHistoricalWeather.forEach(h => {
+      const time = h.dateTime || new Date(h.timestamp);
+      allDataPoints.push({
+        time,
+        timestamp: time.getTime(),
+        observed: null,
+        historical: h.temperature,
+        forecast: null,
+        type: 'historical'
       });
     });
 
@@ -606,6 +646,7 @@ class DashboardController {
         time,
         timestamp: time.getTime(),
         observed: null,
+        historical: null,
         forecast: f.temperature,
         type: 'forecast'
       });
@@ -617,6 +658,7 @@ class DashboardController {
         time: now,
         timestamp: now.getTime(),
         observed: null,
+        historical: null,
         forecast: fullForecastData?.current || forecastTimeline[0]?.temperature,
         type: 'current'
       });
@@ -625,19 +667,22 @@ class DashboardController {
     // Sort all points by time
     allDataPoints.sort((a, b) => a.timestamp - b.timestamp);
 
-    // Prepare chart data
+    // Prepare chart data for 3 datasets
     const labels = allDataPoints.map(point => this.formatTimeForChart(point.time));
     const observedData = allDataPoints.map(point => point.observed);
+    const historicalData = allDataPoints.map(point => point.historical);
     const forecastData = allDataPoints.map(point => point.forecast);
 
     this.chart.data.labels = labels;
-    this.chart.data.datasets[0].data = observedData;
-    this.chart.data.datasets[1].data = forecastData;
+    this.chart.data.datasets[0].data = observedData; // 実測温度
+    this.chart.data.datasets[1].data = historicalData; // 過去の天気
+    this.chart.data.datasets[2].data = forecastData; // 予測温度
     this.chart.update('none');
 
     console.log('📊 Chart updated with timeline data:', {
       totalPoints: allDataPoints.length,
       measurementPoints: filteredMeasurements.length,
+      historicalPoints: filteredHistoricalWeather.length,
       forecastPoints: forecastTimeline.length,
       timeframe: this.chartTimeframe
     });
@@ -654,8 +699,9 @@ class DashboardController {
 
     // Add to chart
     this.chart.data.labels.push(label);
-    this.chart.data.datasets[0].data.push(result.observedC);
-    this.chart.data.datasets[1].data.push(result.forecastC);
+    this.chart.data.datasets[0].data.push(result.observedC); // 実測温度
+    this.chart.data.datasets[1].data.push(null); // 過去の天気（測定データには含まれない）
+    this.chart.data.datasets[2].data.push(result.forecastC); // 予測温度
 
     // Limit data points based on timeframe
     const maxPoints = {
@@ -671,6 +717,7 @@ class DashboardController {
       this.chart.data.labels.shift();
       this.chart.data.datasets[0].data.shift();
       this.chart.data.datasets[1].data.shift();
+      this.chart.data.datasets[2].data.shift();
     }
 
     this.chart.update('none');
@@ -713,10 +760,10 @@ class DashboardController {
   async refreshChartWithCurrentForecast() {
     try {
       const fullForecastData = await weatherService.getFullForecastData();
-      this.updateChart(this.lastMeasurements, fullForecastData);
+      this.updateChart(this.lastMeasurements, fullForecastData, this.historicalWeather);
     } catch (error) {
       console.warn('Failed to refresh forecast for chart:', error);
-      this.updateChart(this.lastMeasurements);
+      this.updateChart(this.lastMeasurements, null, this.historicalWeather);
     }
   }
 
@@ -928,7 +975,7 @@ class DashboardController {
 
       // Update display and chart
       this.updateForecastDisplay(fullForecastData);
-      this.updateChart(this.lastMeasurements, fullForecastData);
+      this.updateChart(this.lastMeasurements, fullForecastData, historicalWeather);
       this.historicalWeather = historicalWeather;
       this.updateHistoricalWeatherDisplay(historicalWeather);
 
