@@ -54,7 +54,10 @@ app.get('/api/historical', async (req, res) => {
       let records = await getHourlyFromDb(pool, dateString);
       let source = 'database';
 
-      if (records.length === 0 || req.query.refresh === 'true') {
+      // Check if auto-fetch should be prevented (used after data deletion)
+      const preventAutoFetch = req.query.preventAutoFetch === 'true';
+
+      if ((records.length === 0 && !preventAutoFetch) || req.query.refresh === 'true') {
         const apiData = await fetchHistoricalByDate({
           apiKey,
           lat,
@@ -106,7 +109,10 @@ app.get('/api/historical', async (req, res) => {
     let records = await getRecentHours(pool, hours);
     let source = 'database';
 
-    if (records.length === 0 || req.query.refresh === 'true') {
+    // Check if auto-fetch should be prevented (used after data deletion)
+    const preventAutoFetch = req.query.preventAutoFetch === 'true';
+
+    if ((records.length === 0 && !preventAutoFetch) || req.query.refresh === 'true') {
       const apiData = await fetchHistoricalByHours({
         apiKey,
         lat,
