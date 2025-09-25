@@ -145,6 +145,14 @@ app.get('/api/historical', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Historical weather API listening on port ${PORT}`);
+
+  // Test axios loading at startup
+  try {
+    const testAxios = require('axios');
+    console.log('✅ axios available in server context:', typeof testAxios?.get);
+  } catch (error) {
+    console.error('❌ axios not available in server context:', error.message);
+  }
 });
 
 async function getHourlyFromDb(pool, dateString) {

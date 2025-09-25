@@ -11,13 +11,23 @@ function loadAxios() {
   for (const loader of candidates) {
     try {
       const mod = loader();
-      return mod?.default ?? mod;
+      // Ensure we get the actual axios function, not just the default property
+      const axiosInstance = mod?.default ?? mod;
+
+      // Verify that the get method exists
+      if (typeof axiosInstance?.get === 'function') {
+        console.log('✅ axios loaded successfully with get method');
+        return axiosInstance;
+      } else {
+        console.warn('⚠️ axios loaded but get method not found:', typeof axiosInstance?.get);
+      }
     } catch (error) {
+      console.warn('❌ Failed to load axios:', error.message);
       lastError = error;
     }
   }
 
-  throw lastError || new Error('axios module not found');
+  throw lastError || new Error('axios module not found or get method not available');
 }
 
 const axios = loadAxios();
