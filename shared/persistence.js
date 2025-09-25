@@ -92,8 +92,81 @@ async function getRecentDeviceMeasurements(limit = 20) {
   }));
 }
 
+async function deleteAllMeasurements() {
+  await initSchema();
+  const pool = getPool();
+
+  try {
+    const result = await pool.query('DELETE FROM device_measurements');
+    console.log(`🗑️ Deleted ${result.rowCount} device measurements`);
+    return result.rowCount;
+  } catch (error) {
+    console.error('❌ Failed to delete device measurements:', error);
+    throw error;
+  }
+}
+
+async function deleteAllHistoricalWeather() {
+  await initSchema();
+  const pool = getPool();
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const historyResult = await client.query('DELETE FROM weather_history');
+    const summaryResult = await client.query('DELETE FROM weather_daily_summary');
+
+    await client.query('COMMIT');
+
+    const totalDeleted = historyResult.rowCount + summaryResult.rowCount;
+    console.log(`🗑️ Deleted ${historyResult.rowCount} weather history records and ${summaryResult.rowCount} daily summaries`);
+    return totalDeleted;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Failed to delete historical weather data:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteAllData() {
+  await initSchema();
+  const pool = getPool();
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const measurementsResult = await client.query('DELETE FROM device_measurements');
+    const historyResult = await client.query('DELETE FROM weather_history');
+    const summaryResult = await client.query('DELETE FROM weather_daily_summary');
+
+    await client.query('COMMIT');
+
+    const totalDeleted = measurementsResult.rowCount + historyResult.rowCount + summaryResult.rowCount;
+    console.log(`🗑️ Deleted all data: ${measurementsResult.rowCount} measurements, ${historyResult.rowCount} weather history, ${summaryResult.rowCount} summaries`);
+    return {
+      measurements: measurementsResult.rowCount,
+      weather_history: historyResult.rowCount,
+      daily_summaries: summaryResult.rowCount,
+      total: totalDeleted
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Failed to delete all data:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   upsertHistoricalDay,
   insertDeviceMeasurement,
-  getRecentDeviceMeasurements
+  getRecentDeviceMeasurements,
+  deleteAllMeasurements,
+  deleteAllHistoricalWeather,
+  deleteAllData
 };

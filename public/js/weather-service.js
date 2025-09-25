@@ -42,7 +42,7 @@ export class WeatherService {
 
       let history = [];
       try {
-        history = await this.getHistoricalWeather();
+        history = await this.getHistoricalWeather(12);
       } catch (historyError) {
         console.warn('⚠️ Historical weather unavailable:', historyError.message || historyError);
       }

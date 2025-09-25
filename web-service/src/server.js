@@ -8,7 +8,7 @@ const {
   calculateDailyStats
 } = require('../../shared/historical-weather');
 const { initSchema, getPool } = require('../../shared/db');
-const { upsertHistoricalDay, insertDeviceMeasurement, getRecentDeviceMeasurements } = require('../../shared/persistence');
+const { upsertHistoricalDay, insertDeviceMeasurement, getRecentDeviceMeasurements, deleteAllMeasurements, deleteAllHistoricalWeather, deleteAllData } = require('../../shared/persistence');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 3000;
@@ -195,6 +195,64 @@ app.post('/api/measurements', async (req, res) => {
     console.error('[measurements] failed', error);
     return res.status(500).json({
       error: 'Failed to record measurement',
+      message: error.message
+    });
+  }
+});
+
+// DELETE endpoints for data cleanup
+app.delete('/api/measurements', async (req, res) => {
+  try {
+    await startup;
+    const deletedCount = await deleteAllMeasurements();
+
+    return res.json({
+      success: true,
+      message: `Deleted ${deletedCount} device measurements`,
+      deletedCount
+    });
+  } catch (error) {
+    console.error('[measurements:delete] failed', error);
+    return res.status(500).json({
+      error: 'Failed to delete measurements',
+      message: error.message
+    });
+  }
+});
+
+app.delete('/api/historical', async (req, res) => {
+  try {
+    await startup;
+    const deletedCount = await deleteAllHistoricalWeather();
+
+    return res.json({
+      success: true,
+      message: `Deleted ${deletedCount} historical weather records`,
+      deletedCount
+    });
+  } catch (error) {
+    console.error('[historical:delete] failed', error);
+    return res.status(500).json({
+      error: 'Failed to delete historical weather data',
+      message: error.message
+    });
+  }
+});
+
+app.delete('/api/all-data', async (req, res) => {
+  try {
+    await startup;
+    const result = await deleteAllData();
+
+    return res.json({
+      success: true,
+      message: `Deleted all data: ${result.total} total records`,
+      result
+    });
+  } catch (error) {
+    console.error('[all-data:delete] failed', error);
+    return res.status(500).json({
+      error: 'Failed to delete all data',
       message: error.message
     });
   }
