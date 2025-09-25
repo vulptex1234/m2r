@@ -66,7 +66,7 @@ public/ ...               # 既存のフロントエンド資産（必要に応�
    | `PGSSLMODE`            | `require`                  |
 
 4. Deploy を実行します。初回起動時に `shared/db.js` がテーブル (`weather_history`, `weather_daily_summary`) を自動生成します。
-5. 動作確認：デプロイ URL に対して `https://<service>.onrender.com/api/historical?hours=3` や `...?date=2025-01-05` を実行し、JSON レスポンスが取得できることを確認します。
+5. 動作確認：デプロイ URL に対して `https://<service>.onrender.com/api/historical?hours=3` や `...?date=2025-01-05` を実行し、JSON レスポンスが取得できることを確認します。`POST /api/measurements` にデバイスデータを送信すると `device_measurements` テーブルに保存されます。
 
 ## 4. Cron Job のデプロイ
 
@@ -89,6 +89,8 @@ public/ ...               # 既存のフロントエンド資産（必要に応�
   - 直近 3 時間のデータ: `GET /api/historical?hours=3`
   - 特定日 (24 時間) のデータ: `GET /api/historical?date=YYYY-MM-DD`
   - `refresh=true` を付与すると API 呼び出しを強制し再取得します。
+  - ESP32 実測データ取得: `GET /api/measurements?limit=20`
+  - ESP32 実測データ受信: `POST /api/measurements`
 - CORS 設定を `CORS_ORIGIN` で制御できます。
 
 ## 6. 補足

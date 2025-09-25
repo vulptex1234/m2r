@@ -8,7 +8,7 @@
 | -------------- | ---------- | ---- | -------- |
 | **Web Service** (`web-service/`) | Render Web Service | OpenWeather からの過去データ取得 API、Postgres キャッシュ層 | `shared/historical-weather.js`, `shared/db.js`, `shared/persistence.js`, Render Postgres |
 | **Cron Job** (`cron-job/`) | Render Cron Job | 日次で過去データを一括取得し Postgres に保管、JSON 出力 | `shared/historical-weather.js`, `shared/persistence.js`, Render Postgres |
-| **Postgres** | Render PostgreSQL | 過去の天気データ・日次サマリーの保存先 | なし（他コンポーネントから参照） |
+| **Postgres** | Render PostgreSQL | 過去の天気データ・日次サマリー・デバイス実測値 (`device_measurements`) の保存先 | なし（他コンポーネントから参照） |
 | **Firebase Functions** (`functions/`) | Firebase (必要に応じて) | 既存の天気予測書き込み処理 | Firebase プロジェクト |
 | **フロントエンド** (`public/`) | Firebase Hosting など既存環境 | Dashboard UI／IoT 連携 | Render Web Service API, Firebase |
 

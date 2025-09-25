@@ -12,6 +12,8 @@ class DashboardController {
     this.nodeStates = new Map();
     this.lastMeasurements = [];
     this.lastUpdateTime = null;
+    this.deviceMeasurements = [];
+    this.lastDeviceMeasurementKey = null;
     this.historicalWeather = [];
 
     // UI Elements
@@ -284,6 +286,9 @@ class DashboardController {
 
       // Update data table
       this.updateDataTable(measurements.slice(0, 20));
+
+      // Load device measurements (ESP32 actual readings)
+      await this.fetchDeviceMeasurements(20, { silent: true });
 
       console.log('📊 Initial data loaded:', {
         measurementCount: measurements.length,
@@ -1085,6 +1090,11 @@ class DashboardController {
         this.updateConnectionStatus(false);
       }
     }, 30000);
+
+    // Periodically fetch device measurements (ESP32 actual readings)
+    setInterval(async () => {
+      await this.fetchDeviceMeasurements(1, { silent: true });
+    }, 60000);
   }
 
   /**
@@ -1225,6 +1235,102 @@ class DashboardController {
           hour: '2-digit'
         });
     }
+  }
+
+  /**
+   * Fetch device measurements from backend API
+   */
+  async fetchDeviceMeasurements(limit = 20, { silent = false } = {}) {
+    try {
+      if (!appConfig?.api?.baseUrl || !appConfig.api.endpoints?.measurements) {
+        return;
+      }
+
+      const url = new URL(appConfig.api.endpoints.measurements, appConfig.api.baseUrl);
+      url.searchParams.set('limit', limit);
+
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        throw new Error(`API responded with ${response.status}`);
+      }
+
+      const payload = await response.json();
+      const measurements = Array.isArray(payload.data) ? payload.data : [];
+
+      if (!measurements.length) {
+        return;
+      }
+
+      measurements.sort((a, b) => {
+        const timeA = new Date(a.recordedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.recordedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+
+      this.deviceMeasurements = measurements;
+
+      const latest = measurements[0];
+      const latestKey = `${latest.deviceId || 'device'}-${latest.recordedAt || latest.createdAt || ''}`;
+
+      if (latestKey && latestKey !== this.lastDeviceMeasurementKey) {
+        this.applyDeviceMeasurement(latest);
+        this.lastDeviceMeasurementKey = latestKey;
+      }
+
+    } catch (error) {
+      console.warn('Failed to fetch device measurements', error);
+      if (!silent) {
+        this.showAlert('warning', 'ESP32の実測データの取得に失敗しました', 4000);
+      }
+    }
+  }
+
+  /**
+   * Apply ESP32 device measurement to UI and history
+   */
+  applyDeviceMeasurement(measurement) {
+    if (!measurement) {
+      return;
+    }
+
+    const tempValue = Number(measurement.temperature);
+    if (!Number.isFinite(tempValue)) {
+      console.warn('Device measurement missing temperature', measurement);
+      return;
+    }
+
+    let timestamp = null;
+    if (measurement.recordedAt) {
+      timestamp = new Date(measurement.recordedAt);
+    } else if (measurement.createdAt) {
+      timestamp = new Date(measurement.createdAt);
+    }
+    if (!timestamp || Number.isNaN(timestamp.getTime())) {
+      timestamp = new Date();
+    }
+
+    const result = {
+      nodeId: measurement.deviceId || 'ESP32',
+      observedC: tempValue,
+      forecastC: null,
+      absError: null,
+      targetRate: RateLevel.LOW,
+      batteryV: measurement.payload?.batteryV ?? measurement.payload?.battery ?? null,
+      measuredAt: timestamp.toISOString(),
+      timestamp: timestamp.getTime(),
+      mode: 'DEVICE'
+    };
+
+    this.updateCurrentMetrics(result);
+
+    this.lastMeasurements.unshift(result);
+    if (this.lastMeasurements.length > 200) {
+      this.lastMeasurements = this.lastMeasurements.slice(0, 200);
+    }
+
+    this.addToChart(result);
+    this.prependToDataTable(result);
+    this.updateNodeStatus(result);
   }
 
   /**

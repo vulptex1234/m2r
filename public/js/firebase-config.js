@@ -49,7 +49,8 @@ export const appConfig = {
     // Backend API endpoints
     baseUrl: 'https://m2r.onrender.com',
     endpoints: {
-      historical: '/api/historical'
+      historical: '/api/historical',
+      measurements: '/api/measurements'
     }
   },
   ui: {

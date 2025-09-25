@@ -70,7 +70,30 @@ async function insertDeviceMeasurement({ deviceId, temperature, humidity, record
   );
 }
 
+async function getRecentDeviceMeasurements(limit = 20) {
+  await initSchema();
+  const pool = getPool();
+  const safeLimit = Math.min(500, Math.max(1, Number(limit) || 20));
+  const { rows } = await pool.query(
+    `SELECT device_id, temperature, humidity, recorded_at, payload, created_at
+       FROM device_measurements
+      ORDER BY COALESCE(recorded_at, created_at) DESC
+      LIMIT $1`,
+    [safeLimit]
+  );
+
+  return rows.map((row) => ({
+    deviceId: row.device_id,
+    temperature: row.temperature != null ? Number(row.temperature) : null,
+    humidity: row.humidity != null ? Number(row.humidity) : null,
+    recordedAt: row.recorded_at ? row.recorded_at.toISOString() : null,
+    createdAt: row.created_at ? row.created_at.toISOString() : null,
+    payload: row.payload || null
+  }));
+}
+
 module.exports = {
   upsertHistoricalDay,
-  insertDeviceMeasurement
+  insertDeviceMeasurement,
+  getRecentDeviceMeasurements
 };

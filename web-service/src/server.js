@@ -8,7 +8,7 @@ const {
   calculateDailyStats
 } = require('../../shared/historical-weather');
 const { initSchema, getPool } = require('../../shared/db');
-const { upsertHistoricalDay, insertDeviceMeasurement } = require('../../shared/persistence');
+const { upsertHistoricalDay, insertDeviceMeasurement, getRecentDeviceMeasurements } = require('../../shared/persistence');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 3000;
@@ -138,6 +138,22 @@ app.get('/api/historical', async (req, res) => {
     console.error('[historical] failed', error);
     return res.status(500).json({
       error: 'Failed to fetch historical weather data',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/measurements', async (req, res) => {
+  try {
+    await startup;
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 20));
+    const measurements = await getRecentDeviceMeasurements(limit);
+    res.set('Cache-Control', 'no-cache');
+    return res.json({ data: measurements });
+  } catch (error) {
+    console.error('[measurements:list] failed', error);
+    return res.status(500).json({
+      error: 'Failed to fetch measurements',
       message: error.message
     });
   }
