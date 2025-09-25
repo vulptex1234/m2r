@@ -10,7 +10,8 @@ function loadAxios() {
   let lastError;
   for (const loader of candidates) {
     try {
-      return loader();
+      const mod = loader();
+      return mod?.default ?? mod;
     } catch (error) {
       lastError = error;
     }
