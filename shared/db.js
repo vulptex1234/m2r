@@ -1,4 +1,25 @@
-const { Pool } = require('pg');
+const path = require('path');
+
+function loadPg() {
+  const candidates = [
+    () => require('pg'),
+    () => require(path.resolve(__dirname, '../web-service/node_modules/pg')),
+    () => require(path.resolve(__dirname, '../cron-job/node_modules/pg'))
+  ];
+
+  let lastError;
+  for (const loader of candidates) {
+    try {
+      return loader();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('pg module not found');
+}
+
+const { Pool } = loadPg();
 
 let pool;
 
