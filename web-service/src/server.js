@@ -8,7 +8,7 @@ const {
   calculateDailyStats
 } = require('../../shared/historical-weather');
 const { initSchema, getPool } = require('../../shared/db');
-const { upsertHistoricalDay } = require('../../shared/persistence');
+const { upsertHistoricalDay, insertDeviceMeasurement } = require('../../shared/persistence');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 3000;
