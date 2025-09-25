@@ -1,0 +1,1211 @@
+// Dashboard UI Controller with Tailwind CSS
+import { realtimeProcessor } from './realtime-processor.js';
+import { firestoreService } from './firestore-service.js';
+import { weatherService } from './weather-service.js';
+import { appConfig } from './firebase-config.js';
+import { RateLevel } from './analytics-engine.js';
+
+class DashboardController {
+  constructor() {
+    this.chart = null;
+    this.chartTimeframe = '1h'; // 1h, 6h, 24h
+    this.nodeStates = new Map();
+    this.lastMeasurements = [];
+    this.lastUpdateTime = null;
+    this.historicalWeather = [];
+
+    // UI Elements
+    this.elements = {
+      // Loading
+      loadingOverlay: document.getElementById('loading-overlay'),
+
+      // Header status
+      connectionStatus: document.getElementById('connection-status'),
+      processingStatus: document.getElementById('processing-status'),
+      refreshBtn: document.getElementById('refresh-btn'),
+
+      // Metrics
+      currentTemp: document.getElementById('current-temp'),
+      tempChange: document.getElementById('temp-change'),
+      forecastTemp: document.getElementById('forecast-temp'),
+      forecastTime: document.getElementById('forecast-time'),
+      systemError: document.getElementById('system-error'),
+      errorTrend: document.getElementById('error-trend'),
+      currentRate: document.getElementById('current-rate'),
+      rateReason: document.getElementById('rate-reason'),
+
+      // Chart
+      temperatureChart: document.getElementById('temperature-chart'),
+      chart1h: document.getElementById('chart-1h'),
+      chart6h: document.getElementById('chart-6h'),
+      chart24h: document.getElementById('chart-24h'),
+      chart72h: document.getElementById('chart-72h'),
+      chart120h: document.getElementById('chart-120h'),
+
+      // Control panel
+      nodeList: document.getElementById('node-list'),
+      refreshForecast: document.getElementById('refresh-forecast'),
+      cleanupData: document.getElementById('cleanup-data'),
+      autoCleanup: document.getElementById('auto-cleanup'),
+
+      // Statistics
+      processedCount: document.getElementById('processed-count'),
+      errorCount: document.getElementById('error-count'),
+      successRate: document.getElementById('success-rate'),
+      avgProcessingTime: document.getElementById('avg-processing-time'),
+      uptime: document.getElementById('uptime'),
+
+      // Historical weather
+      historicalWeather: document.getElementById('historical-weather'),
+
+      // Data table
+      recentDataTable: document.getElementById('recent-data-table'),
+      exportData: document.getElementById('export-data'),
+
+      // Alerts
+      alertContainer: document.getElementById('alert-container')
+    };
+  }
+
+  /**
+   * Initialize dashboard
+   */
+  async initialize() {
+    try {
+      console.log('🎛️ Initializing dashboard...');
+
+      // Setup event listeners
+      this.setupEventListeners();
+
+      // Initialize chart
+      this.initializeChart();
+
+      // Load initial data
+      await this.loadInitialData();
+
+      // Initialize real-time processor
+      await realtimeProcessor.initialize();
+
+      // Setup real-time event handlers
+      this.setupRealtimeHandlers();
+
+      // Start periodic updates
+      this.startPeriodicUpdates();
+
+      // Hide loading overlay
+      this.hideLoadingOverlay();
+
+      this.showAlert('success', 'ダッシュボードが正常に初期化されました', 3000);
+
+      console.log('✅ Dashboard initialized successfully');
+
+    } catch (error) {
+      console.error('❌ Dashboard initialization failed:', error);
+      this.showAlert('error', `初期化エラー: ${error.message}`);
+      this.hideLoadingOverlay();
+    }
+  }
+
+  /**
+   * Setup event listeners
+   */
+  setupEventListeners() {
+    // Header refresh button
+    this.elements.refreshBtn?.addEventListener('click', () => {
+      this.refreshAll();
+    });
+
+    // Chart timeframe buttons
+    this.elements.chart1h?.addEventListener('click', () => this.switchChartTimeframe('1h'));
+    this.elements.chart6h?.addEventListener('click', () => this.switchChartTimeframe('6h'));
+    this.elements.chart24h?.addEventListener('click', () => this.switchChartTimeframe('24h'));
+    this.elements.chart72h?.addEventListener('click', () => this.switchChartTimeframe('72h'));
+    this.elements.chart120h?.addEventListener('click', () => this.switchChartTimeframe('120h'));
+
+    // Control buttons
+    this.elements.refreshForecast?.addEventListener('click', async () => {
+      await this.manualForecastRefresh();
+    });
+
+    this.elements.cleanupData?.addEventListener('click', async () => {
+      await this.manualDataCleanup();
+    });
+
+    // Export button
+    this.elements.exportData?.addEventListener('click', () => {
+      this.exportMeasurementData();
+    });
+
+    // Auto cleanup checkbox
+    this.elements.autoCleanup?.addEventListener('change', (e) => {
+      localStorage.setItem('autoCleanup', e.target.checked);
+    });
+
+    // Load auto cleanup preference
+    const autoCleanupEnabled = localStorage.getItem('autoCleanup') === 'true';
+    if (this.elements.autoCleanup) {
+      this.elements.autoCleanup.checked = autoCleanupEnabled;
+    }
+  }
+
+  /**
+   * Setup real-time event handlers
+   */
+  setupRealtimeHandlers() {
+    // Measurement processed event
+    window.addEventListener('measurementProcessed', (event) => {
+      this.handleMeasurementProcessed(event.detail);
+    });
+
+    // Processing error event
+    window.addEventListener('processingError', (event) => {
+      this.handleProcessingError(event.detail);
+    });
+
+    // System status update event
+    window.addEventListener('systemStatus', (event) => {
+      this.updateSystemStatus(event.detail);
+    });
+  }
+
+  /**
+   * Initialize temperature chart
+   */
+  initializeChart() {
+    const ctx = this.elements.temperatureChart?.getContext('2d');
+    if (!ctx) return;
+
+    this.chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: '実測温度',
+            data: [],
+            borderColor: '#2196F3',
+            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1
+          },
+          {
+            label: '予測温度',
+            data: [],
+            borderColor: '#FF9800',
+            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1,
+            borderDash: [5, 5]
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+          },
+          title: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            title: {
+              display: true,
+              text: '温度 (°C)'
+            },
+            ticks: {
+              maxTicksLimit: 8  // Y軸のラベル数を制限
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: '時刻'
+            },
+            ticks: {
+              maxTicksLimit: 12  // X軸のラベル数を制限（長期間表示で重複防止）
+            }
+          }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        }
+      }
+    });
+  }
+
+  /**
+   * Load initial data
+   */
+  async loadInitialData() {
+    try {
+      // Load measurements and forecast concurrently
+      const [measurements, fullForecastData] = await Promise.all([
+        firestoreService.getRecentMeasurements(null, 100),
+        weatherService.getFullForecastData()
+      ]);
+      this.lastMeasurements = measurements;
+
+      // Load historical weather data
+      let historicalWeather = [];
+      try {
+        historicalWeather = await weatherService.getHistoricalWeather(3);
+      } catch (error) {
+        console.warn('⚠️ Failed to load historical weather data:', error);
+        this.showAlert('warning', '過去の天気データの取得に失敗しました');
+      }
+
+      this.historicalWeather = historicalWeather;
+
+      this.updateForecastDisplay(fullForecastData);
+      this.updateHistoricalWeatherDisplay(historicalWeather);
+
+      // Update chart with measurements and forecast timeline
+      this.updateChart(measurements, fullForecastData);
+
+      // Update data table
+      this.updateDataTable(measurements.slice(0, 20));
+
+      console.log('📊 Initial data loaded:', {
+        measurementCount: measurements.length,
+        forecastAvailable: fullForecastData.current !== null,
+        forecastTimelinePoints: fullForecastData.timeline?.length || 0,
+        historicalPoints: historicalWeather.length
+      });
+
+    } catch (error) {
+      console.error('❌ Failed to load initial data:', error);
+      this.showAlert('warning', 'データの読み込みに失敗しました');
+    }
+  }
+
+  /**
+   * Handle measurement processed event
+   */
+  handleMeasurementProcessed(result) {
+    console.log('📡 New measurement processed:', result);
+
+    // Show processing indicator briefly
+    this.showProcessingIndicator();
+
+    // Update metrics
+    this.updateCurrentMetrics(result);
+
+    // Update node status
+    this.updateNodeStatus(result);
+
+    // Add to chart if within timeframe
+    this.addToChart(result);
+
+    // Update data table
+    this.prependToDataTable(result);
+
+    // Update last measurements array
+    this.lastMeasurements.unshift(result);
+    if (this.lastMeasurements.length > 200) {
+      this.lastMeasurements = this.lastMeasurements.slice(0, 100);
+    }
+
+    this.lastUpdateTime = new Date();
+  }
+
+  /**
+   * Handle processing error event
+   */
+  handleProcessingError(errorDetail) {
+    console.error('❌ Processing error:', errorDetail);
+    this.showAlert('error', `処理エラー: ${errorDetail.error}`, 5000);
+  }
+
+  /**
+   * Update current metrics display
+   */
+  updateCurrentMetrics(result) {
+    // Current temperature
+    if (this.elements.currentTemp) {
+      this.elements.currentTemp.textContent = `${result.observedC.toFixed(1)}°C`;
+    }
+
+    // Temperature change
+    if (this.elements.tempChange && this.lastMeasurements.length > 0) {
+      const prevTemp = this.lastMeasurements[0]?.observedC;
+      if (prevTemp !== undefined) {
+        const change = result.observedC - prevTemp;
+        const changeText = change >= 0 ? `+${change.toFixed(1)}°C` : `${change.toFixed(1)}°C`;
+        const changeClass = change >= 0 ? 'text-red-500' : 'text-blue-500';
+        this.elements.tempChange.innerHTML = `前回比: <span class="${changeClass}">${changeText}</span>`;
+      }
+    }
+
+    // System error
+    if (this.elements.systemError && result.sErr !== undefined) {
+      this.elements.systemError.textContent = result.sErr.toFixed(3);
+
+      // Error trend
+      if (this.elements.errorTrend) {
+        const accuracy = ((1 - result.sErr) * 100).toFixed(1);
+        this.elements.errorTrend.textContent = `精度: ${accuracy}%`;
+      }
+    }
+
+    // Control rate
+    this.updateRateDisplay(result.targetRate, result.reason);
+  }
+
+  /**
+   * Update rate display with proper styling
+   */
+  updateRateDisplay(rate, reason) {
+    if (!this.elements.currentRate) return;
+
+    const rateConfig = {
+      [RateLevel.LOW]: {
+        class: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        text: 'LOW'
+      },
+      [RateLevel.MEDIUM]: {
+        class: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+        text: 'MEDIUM'
+      },
+      [RateLevel.HIGH]: {
+        class: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+        text: 'HIGH'
+      }
+    };
+
+    const config = rateConfig[rate] || {
+      class: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      text: 'UNKNOWN'
+    };
+
+    this.elements.currentRate.innerHTML = `
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.class}">
+        ${config.text}
+      </span>
+    `;
+
+    if (this.elements.rateReason) {
+      const reasonText = {
+        'escalate': 'エスカレーション',
+        'de-escalate': 'デエスカレーション',
+        'hold': '維持',
+        'safety-floor': '安全下限',
+        'baseline-threshold': 'ベースライン',
+        'forecast-missing': '予測データなし'
+      };
+      this.elements.rateReason.textContent = `理由: ${reasonText[reason] || reason}`;
+    }
+  }
+
+  /**
+   * Update forecast display
+   */
+  updateForecastDisplay(fullForecastData) {
+    if (this.elements.forecastTemp) {
+      this.elements.forecastTemp.textContent =
+        fullForecastData?.current !== null ? `${fullForecastData.current.toFixed(1)}°C` : '--°C';
+    }
+
+    if (this.elements.forecastTime && fullForecastData?.fetchedAt) {
+      const time = fullForecastData.fetchedAt instanceof Date ?
+        fullForecastData.fetchedAt : new Date(fullForecastData.fetchedAt);
+      this.elements.forecastTime.textContent = `更新: ${this.formatTime(time)}`;
+
+      // Add timeline info if available
+      if (fullForecastData.timeline?.length > 0) {
+        const timelineInfo = ` (${fullForecastData.timeline.length}点の予測データ)`;
+        this.elements.forecastTime.textContent += timelineInfo;
+      }
+    }
+  }
+
+  /**
+   * Update historical weather display
+   */
+  updateHistoricalWeatherDisplay(history = []) {
+    if (!this.elements.historicalWeather) return;
+
+    if (!Array.isArray(history) || history.length === 0) {
+      this.elements.historicalWeather.innerHTML = `
+        <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-500 dark:text-gray-300">
+          過去の天気データはありません
+        </div>
+      `;
+      return;
+    }
+
+    const items = [...history]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .map(item => {
+        const time = item.dateTime instanceof Date ? item.dateTime : new Date(item.timestamp);
+        const tempText = typeof item.temperature === 'number' ? `${item.temperature.toFixed(1)}°C` : '--°C';
+        const humidityText = item.humidity !== null && item.humidity !== undefined ? `${item.humidity}%` : '--';
+        const description = item.description || '不明';
+        const relative = this.formatRelativeTime(time);
+
+        return `
+          <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div>
+              <div class="text-sm font-medium text-gray-900 dark:text-white">${tempText}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-300">湿度: ${humidityText} / ${description}</div>
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-300 text-right">
+              <div>${this.formatTime(time)}</div>
+              <div>${relative}</div>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    this.elements.historicalWeather.innerHTML = items;
+  }
+
+  /**
+   * Update node status list
+   */
+  updateNodeStatus(result) {
+    this.nodeStates.set(result.nodeId, {
+      ...result,
+      lastSeen: new Date()
+    });
+
+    this.renderNodeList();
+  }
+
+  /**
+   * Render node list
+   */
+  renderNodeList() {
+    if (!this.elements.nodeList) return;
+
+    if (this.nodeStates.size === 0) {
+      this.elements.nodeList.innerHTML = `
+        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div class="flex items-center space-x-3">
+            <div class="w-3 h-3 bg-gray-400 rounded-full"></div>
+            <span class="text-sm font-medium">ノード検索中...</span>
+          </div>
+          <span class="text-xs text-gray-500">--</span>
+        </div>
+      `;
+      return;
+    }
+
+    const nodeHtml = Array.from(this.nodeStates.entries()).map(([nodeId, state]) => {
+      const isRecent = Date.now() - state.lastSeen.getTime() < 300000; // 5 minutes
+      const statusColor = isRecent ? 'bg-green-400' : 'bg-gray-400';
+      const rateConfig = {
+        [RateLevel.LOW]: 'text-green-600',
+        [RateLevel.MEDIUM]: 'text-yellow-600',
+        [RateLevel.HIGH]: 'text-red-600'
+      };
+
+      return `
+        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div class="flex items-center space-x-3">
+            <div class="w-3 h-3 ${statusColor} rounded-full ${isRecent ? 'animate-pulse' : ''}"></div>
+            <div>
+              <span class="text-sm font-medium">${nodeId}</span>
+              <div class="text-xs text-gray-500">
+                ${state.observedC.toFixed(1)}°C •
+                <span class="${rateConfig[state.targetRate] || 'text-gray-600'}">${state.targetRate}</span>
+              </div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-gray-500">${this.formatTime(state.lastSeen)}</div>
+            ${state.batteryV ? `<div class="text-xs text-gray-400">${state.batteryV.toFixed(1)}V</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    this.elements.nodeList.innerHTML = nodeHtml;
+  }
+
+  /**
+   * Update chart with new data
+   */
+  updateChart(measurements, fullForecastData = null) {
+    if (!this.chart) return;
+
+    const now = new Date();
+    const timeframes = {
+      '1h': 60 * 60 * 1000,
+      '6h': 6 * 60 * 60 * 1000,
+      '24h': 24 * 60 * 60 * 1000,
+      '72h': 72 * 60 * 60 * 1000,
+      '120h': 120 * 60 * 60 * 1000
+    };
+
+    // Get time boundaries for chart
+    const pastCutoff = now.getTime() - timeframes[this.chartTimeframe];
+    const futureCutoff = now.getTime() + timeframes[this.chartTimeframe];
+
+    // Process measurement data
+    const filteredMeasurements = measurements.filter(m => {
+      const time = m.recordedAt?.toDate ? m.recordedAt.toDate().getTime() : Date.parse(m.measuredAt);
+      return time >= pastCutoff;
+    }).sort((a, b) => {
+      const timeA = a.recordedAt?.toDate ? a.recordedAt.toDate().getTime() : Date.parse(a.measuredAt);
+      const timeB = b.recordedAt?.toDate ? b.recordedAt.toDate().getTime() : Date.parse(b.measuredAt);
+      return timeA - timeB;
+    });
+
+    // Process forecast data
+    let forecastTimeline = [];
+    if (fullForecastData?.timeline && Array.isArray(fullForecastData.timeline)) {
+      forecastTimeline = fullForecastData.timeline.filter(item => {
+        const timestamp = item.timestamp || item.dateTime?.getTime();
+        return timestamp >= now.getTime() && timestamp <= futureCutoff;
+      }).sort((a, b) => {
+        const timeA = a.timestamp || a.dateTime?.getTime();
+        const timeB = b.timestamp || b.dateTime?.getTime();
+        return timeA - timeB;
+      });
+    }
+
+    // If no data at all, try to show current forecast point
+    if (!filteredMeasurements.length && !forecastTimeline.length && fullForecastData?.current !== null) {
+      this.chart.data.labels = [this.formatTimeForChart(now)];
+      this.chart.data.datasets[0].data = [];
+      this.chart.data.datasets[1].data = [fullForecastData.current];
+      this.chart.update('none');
+
+      console.log('📊 Chart updated with single current forecast:', fullForecastData.current);
+      return;
+    }
+
+    // Combine measurement and forecast data for timeline
+    const allDataPoints = [];
+
+    // Add measurement points (past data)
+    filteredMeasurements.forEach(m => {
+      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt);
+      allDataPoints.push({
+        time,
+        timestamp: time.getTime(),
+        observed: m.observedC,
+        forecast: m.forecastC || null,
+        type: 'measurement'
+      });
+    });
+
+    // Add forecast points (future data)
+    forecastTimeline.forEach(f => {
+      const time = f.dateTime || new Date(f.timestamp);
+      allDataPoints.push({
+        time,
+        timestamp: time.getTime(),
+        observed: null,
+        forecast: f.temperature,
+        type: 'forecast'
+      });
+    });
+
+    // Add current time marker if we have forecast data
+    if (forecastTimeline.length > 0 && !allDataPoints.some(p => Math.abs(p.timestamp - now.getTime()) < 300000)) {
+      allDataPoints.push({
+        time: now,
+        timestamp: now.getTime(),
+        observed: null,
+        forecast: fullForecastData?.current || forecastTimeline[0]?.temperature,
+        type: 'current'
+      });
+    }
+
+    // Sort all points by time
+    allDataPoints.sort((a, b) => a.timestamp - b.timestamp);
+
+    // Prepare chart data
+    const labels = allDataPoints.map(point => this.formatTimeForChart(point.time));
+    const observedData = allDataPoints.map(point => point.observed);
+    const forecastData = allDataPoints.map(point => point.forecast);
+
+    this.chart.data.labels = labels;
+    this.chart.data.datasets[0].data = observedData;
+    this.chart.data.datasets[1].data = forecastData;
+    this.chart.update('none');
+
+    console.log('📊 Chart updated with timeline data:', {
+      totalPoints: allDataPoints.length,
+      measurementPoints: filteredMeasurements.length,
+      forecastPoints: forecastTimeline.length,
+      timeframe: this.chartTimeframe
+    });
+  }
+
+  /**
+   * Add single measurement to chart
+   */
+  addToChart(result) {
+    if (!this.chart) return;
+
+    const time = new Date(result.measuredAt || result.timestamp);
+    const label = this.formatTimeForChart(time);
+
+    // Add to chart
+    this.chart.data.labels.push(label);
+    this.chart.data.datasets[0].data.push(result.observedC);
+    this.chart.data.datasets[1].data.push(result.forecastC);
+
+    // Limit data points based on timeframe
+    const maxPoints = {
+      '1h': 60,    // 1 point per minute
+      '6h': 72,    // 1 point per 5 minutes
+      '24h': 144,  // 1 point per 10 minutes
+      '72h': 72,   // 1 point per 3 hours
+      '120h': 40   // 1 point per 3 hours (OpenWeatherMap forecast data)
+    };
+
+    const limit = maxPoints[this.chartTimeframe] || 60;
+    if (this.chart.data.labels.length > limit) {
+      this.chart.data.labels.shift();
+      this.chart.data.datasets[0].data.shift();
+      this.chart.data.datasets[1].data.shift();
+    }
+
+    this.chart.update('none');
+  }
+
+  /**
+   * Switch chart timeframe
+   */
+  switchChartTimeframe(timeframe) {
+    this.chartTimeframe = timeframe;
+
+    // Update button states
+    [this.elements.chart1h, this.elements.chart6h, this.elements.chart24h, this.elements.chart72h, this.elements.chart120h].forEach(btn => {
+      if (btn) {
+        btn.className = btn.className.replace(/bg-brand-blue|bg-gray-200|dark:bg-gray-700|text-white|text-gray-700|dark:text-gray-300/g, '');
+        btn.className += ' px-3 py-1 text-sm rounded-lg';
+      }
+    });
+
+    const activeBtn = this.elements[`chart${timeframe}`];
+    if (activeBtn) {
+      activeBtn.className += ' bg-brand-blue text-white';
+    }
+
+    const inactiveBtns = [this.elements.chart1h, this.elements.chart6h, this.elements.chart24h, this.elements.chart72h, this.elements.chart120h]
+      .filter(btn => btn !== activeBtn);
+    inactiveBtns.forEach(btn => {
+      if (btn) {
+        btn.className += ' bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+      }
+    });
+
+    // Update chart with current forecast if available
+    this.refreshChartWithCurrentForecast();
+  }
+
+  /**
+   * Refresh chart with current forecast data
+   */
+  async refreshChartWithCurrentForecast() {
+    try {
+      const fullForecastData = await weatherService.getFullForecastData();
+      this.updateChart(this.lastMeasurements, fullForecastData);
+    } catch (error) {
+      console.warn('Failed to refresh forecast for chart:', error);
+      this.updateChart(this.lastMeasurements);
+    }
+  }
+
+  /**
+   * Update data table
+   */
+  updateDataTable(measurements) {
+    if (!this.elements.recentDataTable) return;
+
+    if (!measurements.length) {
+      this.elements.recentDataTable.innerHTML = `
+        <tr>
+          <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            データがありません
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const rows = measurements.map(m => {
+      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt);
+      const rateClass = {
+        [RateLevel.LOW]: 'bg-green-100 text-green-800',
+        [RateLevel.MEDIUM]: 'bg-yellow-100 text-yellow-800',
+        [RateLevel.HIGH]: 'bg-red-100 text-red-800'
+      };
+
+      return `
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${this.formatDateTime(time)}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+            ${m.nodeId}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${m.observedC.toFixed(1)}°C
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${m.forecastC ? m.forecastC.toFixed(1) + '°C' : '--'}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${m.absError ? m.absError.toFixed(2) : '--'}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${rateClass[m.targetRate] || 'bg-gray-100 text-gray-800'}">
+              ${m.targetRate}
+            </span>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${m.batteryV ? m.batteryV.toFixed(1) + 'V' : '--'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    this.elements.recentDataTable.innerHTML = rows;
+  }
+
+  /**
+   * Prepend new measurement to data table
+   */
+  prependToDataTable(result) {
+    if (!this.elements.recentDataTable) return;
+
+    // Remove "no data" row if present
+    const noDataRow = this.elements.recentDataTable.querySelector('tr td[colspan="7"]');
+    if (noDataRow) {
+      noDataRow.parentElement.remove();
+    }
+
+    const time = new Date(result.measuredAt || result.timestamp);
+    const rateClass = {
+      [RateLevel.LOW]: 'bg-green-100 text-green-800',
+      [RateLevel.MEDIUM]: 'bg-yellow-100 text-yellow-800',
+      [RateLevel.HIGH]: 'bg-red-100 text-red-800'
+    };
+
+    const newRow = document.createElement('tr');
+    newRow.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 bg-blue-50 dark:bg-blue-900';
+    newRow.innerHTML = `
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${this.formatDateTime(time)}
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+        ${result.nodeId}
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${result.observedC.toFixed(1)}°C
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${result.forecastC ? result.forecastC.toFixed(1) + '°C' : '--'}
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${result.absError ? result.absError.toFixed(2) : '--'}
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${rateClass[result.targetRate] || 'bg-gray-100 text-gray-800'}">
+          ${result.targetRate}
+        </span>
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${result.batteryV ? result.batteryV.toFixed(1) + 'V' : '--'}
+      </td>
+    `;
+
+    this.elements.recentDataTable.insertBefore(newRow, this.elements.recentDataTable.firstChild);
+
+    // Remove highlight after animation
+    setTimeout(() => {
+      newRow.className = newRow.className.replace('bg-blue-50 dark:bg-blue-900', '');
+    }, 2000);
+
+    // Limit table rows
+    const maxRows = 20;
+    const rows = this.elements.recentDataTable.children;
+    if (rows.length > maxRows) {
+      for (let i = maxRows; i < rows.length; i++) {
+        rows[i].remove();
+      }
+    }
+  }
+
+  /**
+   * Update system status
+   */
+  updateSystemStatus(status) {
+    // Update statistics
+    if (this.elements.processedCount) {
+      this.elements.processedCount.textContent = status.processedCount || '0';
+    }
+    if (this.elements.errorCount) {
+      this.elements.errorCount.textContent = status.errorCount || '0';
+    }
+    if (this.elements.successRate) {
+      this.elements.successRate.textContent = status.successRate || '--';
+    }
+    if (this.elements.avgProcessingTime) {
+      this.elements.avgProcessingTime.textContent =
+        status.avgProcessingTimeMs ? `${status.avgProcessingTimeMs}ms` : '--';
+    }
+    if (this.elements.uptime) {
+      this.elements.uptime.textContent =
+        status.uptimeMinutes ? `${Math.floor(status.uptimeMinutes / 60)}h ${status.uptimeMinutes % 60}m` : '--';
+    }
+
+    // Update connection status
+    this.updateConnectionStatus(status.status === 'healthy');
+  }
+
+  /**
+   * Update connection status indicator
+   */
+  updateConnectionStatus(isHealthy) {
+    if (!this.elements.connectionStatus) return;
+
+    const statusDot = this.elements.connectionStatus.querySelector('.w-2.h-2');
+    const statusText = this.elements.connectionStatus.querySelector('span');
+
+    if (isHealthy) {
+      statusDot.className = 'w-2 h-2 bg-success rounded-full animate-pulse-slow';
+      statusText.textContent = '接続中';
+    } else {
+      statusDot.className = 'w-2 h-2 bg-error rounded-full animate-bounce-gentle';
+      statusText.textContent = '接続エラー';
+    }
+  }
+
+  /**
+   * Show processing indicator
+   */
+  showProcessingIndicator() {
+    if (this.elements.processingStatus) {
+      this.elements.processingStatus.classList.remove('hidden');
+      this.elements.processingStatus.classList.add('flex');
+
+      setTimeout(() => {
+        this.elements.processingStatus.classList.add('hidden');
+        this.elements.processingStatus.classList.remove('flex');
+      }, 1000);
+    }
+  }
+
+  /**
+   * Manual forecast refresh
+   */
+  async manualForecastRefresh() {
+    const button = this.elements.refreshForecast;
+    if (!button) return;
+
+    try {
+      button.disabled = true;
+      button.innerHTML = `
+        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+        <span>更新中...</span>
+      `;
+
+      // Refresh forecast data from weather API
+      const [fullForecastData, historicalWeather] = await Promise.all([
+        weatherService.getFullForecastData(),
+        weatherService.getHistoricalWeather(3).catch(error => {
+          console.warn('⚠️ Historical weather refresh failed:', error);
+          return this.historicalWeather || [];
+        })
+      ]);
+
+      this.showAlert('success', '予測データを更新しました', 3000);
+
+      // Update display and chart
+      this.updateForecastDisplay(fullForecastData);
+      this.updateChart(this.lastMeasurements, fullForecastData);
+      this.historicalWeather = historicalWeather;
+      this.updateHistoricalWeatherDisplay(historicalWeather);
+
+    } catch (error) {
+      console.error('❌ Manual forecast refresh failed:', error);
+      this.showAlert('error', `予測データ更新エラー: ${error.message}`);
+    } finally {
+      button.disabled = false;
+      button.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+        </svg>
+        <span>予測データ更新</span>
+      `;
+    }
+  }
+
+  /**
+   * Manual data cleanup
+   */
+  async manualDataCleanup() {
+    const button = this.elements.cleanupData;
+    if (!button) return;
+
+    try {
+      button.disabled = true;
+      button.innerHTML = `
+        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+        <span>削除中...</span>
+      `;
+
+      const deletedCount = await firestoreService.cleanupOldMeasurements();
+
+      if (deletedCount > 0) {
+        this.showAlert('success', `${deletedCount}件の古いデータを削除しました`, 3000);
+      } else {
+        this.showAlert('info', '削除対象のデータはありませんでした', 3000);
+      }
+
+    } catch (error) {
+      console.error('❌ Manual data cleanup failed:', error);
+      this.showAlert('error', `データ削除エラー: ${error.message}`);
+    } finally {
+      button.disabled = false;
+      button.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+        </svg>
+        <span>古いデータ削除</span>
+      `;
+    }
+  }
+
+  /**
+   * Export measurement data as CSV
+   */
+  exportMeasurementData() {
+    if (!this.lastMeasurements.length) {
+      this.showAlert('warning', 'エクスポートするデータがありません');
+      return;
+    }
+
+    const csvData = [
+      ['時刻', 'ノードID', '実測温度', '予測温度', '誤差', '制御レート', 'バッテリー電圧', 'システム誤差']
+    ];
+
+    this.lastMeasurements.forEach(m => {
+      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt);
+      csvData.push([
+        this.formatDateTime(time),
+        m.nodeId,
+        m.observedC,
+        m.forecastC || '',
+        m.absError || '',
+        m.targetRate,
+        m.batteryV || '',
+        m.sErr || ''
+      ]);
+    });
+
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `iot-measurements-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+
+    this.showAlert('success', 'データをエクスポートしました', 3000);
+  }
+
+  /**
+   * Start periodic updates
+   */
+  startPeriodicUpdates() {
+    // Update relative timestamps every minute
+    setInterval(() => {
+      this.renderNodeList();
+    }, 60000);
+
+    // System health check every 30 seconds
+    setInterval(async () => {
+      try {
+        const health = await firestoreService.getSystemHealth();
+        this.updateConnectionStatus(health.status === 'healthy');
+      } catch (error) {
+        console.warn('Health check failed:', error);
+        this.updateConnectionStatus(false);
+      }
+    }, 30000);
+  }
+
+  /**
+   * Refresh all data
+   */
+  async refreshAll() {
+    try {
+      this.showAlert('info', 'データを再読み込み中...', 2000);
+      await this.loadInitialData();
+      this.showAlert('success', 'データを更新しました', 3000);
+    } catch (error) {
+      console.error('❌ Refresh failed:', error);
+      this.showAlert('error', `更新エラー: ${error.message}`);
+    }
+  }
+
+  /**
+   * Show alert message
+   */
+  showAlert(type, message, duration = 0) {
+    if (!this.elements.alertContainer) return;
+
+    const alertTypes = {
+      success: 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-200',
+      error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900 dark:border-red-700 dark:text-red-200',
+      warning: 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-200',
+      info: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-200'
+    };
+
+    const alert = document.createElement('div');
+    alert.className = `border-l-4 p-4 mb-4 rounded-lg ${alertTypes[type] || alertTypes.info}`;
+    alert.innerHTML = `
+      <div class="flex justify-between items-center">
+        <span>${message}</span>
+        <button class="ml-4 text-current opacity-70 hover:opacity-100" onclick="this.parentElement.parentElement.remove()">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+
+    this.elements.alertContainer.appendChild(alert);
+
+    if (duration > 0) {
+      setTimeout(() => {
+        alert.remove();
+      }, duration);
+    }
+  }
+
+  /**
+   * Hide loading overlay
+   */
+  hideLoadingOverlay() {
+    if (this.elements.loadingOverlay) {
+      this.elements.loadingOverlay.style.display = 'none';
+    }
+  }
+
+  /**
+   * Format time for display
+   */
+  formatTime(date) {
+    return date.toLocaleTimeString('ja-JP', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  /**
+   * Format datetime for display
+   */
+  formatDateTime(date) {
+    return date.toLocaleString('ja-JP', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  /**
+   * Format time for chart labels
+   */
+  formatTimeForChart(date) {
+    switch (this.chartTimeframe) {
+      case '1h':
+        // 1時間表示: 時:分
+        return date.toLocaleTimeString('ja-JP', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+      case '6h':
+        // 6時間表示: 時:分
+        return date.toLocaleTimeString('ja-JP', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+      case '24h':
+        // 24時間表示: 月日 時
+        return date.toLocaleString('ja-JP', {
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit'
+        });
+
+      case '72h':
+        // 3日表示: 月日 時
+        return date.toLocaleString('ja-JP', {
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit'
+        });
+
+      case '120h':
+        // 5日表示: 月日のみ (3時間毎なので時間表示は省略)
+        const hours = date.getHours();
+        if (hours === 0 || hours === 12) {
+          // 0時と12時のみ日付表示
+          return date.toLocaleDateString('ja-JP', {
+            month: '2-digit',
+            day: '2-digit'
+          });
+        } else {
+          // その他は時間のみ
+          return date.toLocaleTimeString('ja-JP', {
+            hour: '2-digit'
+          });
+        }
+
+      default:
+        return date.toLocaleString('ja-JP', {
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit'
+        });
+    }
+  }
+
+  /**
+   * Format relative time string (e.g., 3時間前)
+   */
+  formatRelativeTime(date) {
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
+
+    if (diffMinutes < 60) {
+      return `${diffMinutes}分前`;
+    }
+
+    const diffHours = Math.round(diffMinutes / 60);
+    if (diffHours < 24) {
+      return `${diffHours}時間前`;
+    }
+
+    const diffDays = Math.round(diffHours / 24);
+    return `${diffDays}日前`;
+  }
+}
+
+// Initialize dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', async () => {
+  const dashboard = new DashboardController();
+  await dashboard.initialize();
+});
+
+// Export for debugging
+window.dashboard = DashboardController;

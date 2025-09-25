@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Panel - IoT Temperature Control</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Custom Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'brand-blue': '#2196F3',
+            'brand-orange': '#FF9800',
+            'success': '#4CAF50',
+            'warning': '#FF5722',
+            'error': '#F44336'
+          }
+        }
+      },
+      darkMode: 'media'
+    }
+  </script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+  <!-- Header -->
+  <header class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center py-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+            <span class="text-purple-600 font-bold text-lg">🧪</span>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold">Test Panel</h1>
+            <p class="text-purple-100 text-sm">IoT システムテスト</p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+          <a href="index.html" class="bg-white/20 hover:bg-white/30 rounded-lg px-4 py-2 transition-colors duration-200 text-sm font-medium">
+            メインダッシュボード
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="p-6 max-w-7xl mx-auto">
+
+    <!-- Status Display -->
+    <div class="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+      <h2 class="text-lg font-semibold mb-4">テスト状態</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="text-center">
+          <div id="generation-status" class="text-2xl font-bold text-gray-600 mb-2">停止中</div>
+          <div class="text-sm text-gray-500">データ生成</div>
+        </div>
+
+        <div class="text-center">
+          <div id="generation-count" class="text-2xl font-bold text-brand-blue mb-2">0</div>
+          <div class="text-sm text-gray-500">生成件数</div>
+        </div>
+
+        <div class="text-center">
+          <div id="node-count" class="text-2xl font-bold text-brand-orange mb-2">3</div>
+          <div class="text-sm text-gray-500">テストノード数</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Control Panels -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+      <!-- Basic Data Generation -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold mb-4">基本データ生成</h3>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              生成間隔（秒）
+            </label>
+            <input id="generation-interval" type="number" value="5" min="1" max="60"
+                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+          </div>
+
+          <div class="flex space-x-3">
+            <button id="start-generation"
+                    class="flex-1 bg-success hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+              データ生成開始
+            </button>
+
+            <button id="stop-generation"
+                    class="flex-1 bg-error hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200" disabled>
+              停止
+            </button>
+          </div>
+
+          <button id="single-measurement"
+                  class="w-full bg-brand-blue hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+            単発測定生成
+          </button>
+        </div>
+      </div>
+
+      <!-- Advanced Data Generation -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold mb-4">高度なデータ生成</h3>
+
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                履歴データ件数
+              </label>
+              <input id="historical-count" type="number" value="30" min="1" max="200"
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                間隔（分）
+              </label>
+              <input id="historical-interval" type="number" value="2" min="1" max="60"
+                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+            </div>
+          </div>
+
+          <button id="generate-historical"
+                  class="w-full bg-brand-orange hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+            履歴データ生成
+          </button>
+
+          <button id="generate-anomaly"
+                  class="w-full bg-warning hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+            異常データ生成
+          </button>
+
+          <button id="generate-forecast"
+                  class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+            予測データ生成
+          </button>
+        </div>
+      </div>
+
+      <!-- Node Configuration -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold mb-4">ノード設定</h3>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              テストノード
+            </label>
+            <div id="node-list" class="space-y-2">
+              <!-- Dynamic node list will be inserted here -->
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">新しいノード追加</h4>
+            <div class="flex space-x-2">
+              <input id="new-node-id" type="text" placeholder="node-id"
+                     class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <input id="new-node-temp" type="number" placeholder="20.0" step="0.1"
+                     class="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <button id="add-node"
+                      class="px-4 py-2 bg-brand-blue hover:bg-blue-600 text-white rounded-lg transition-colors duration-200">
+                追加
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Tools -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-semibold mb-4">システムツール</h3>
+
+        <div class="space-y-4">
+          <button id="clear-logs"
+                  class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+            ログクリア
+          </button>
+
+          <button id="export-config"
+                  class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+            設定エクスポート
+          </button>
+
+          <button id="reset-system"
+                  class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200">
+            システムリセット
+          </button>
+
+          <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">キーボードショートカット</h4>
+            <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+              <div><code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">Ctrl+Shift+T</code> データ生成切替</div>
+              <div><code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">Ctrl+Shift+H</code> 履歴データ生成</div>
+              <div><code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">Ctrl+Shift+A</code> 異常データ生成</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log Display -->
+    <div class="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <div class="p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold">テストログ</h3>
+          <div class="flex items-center space-x-2">
+            <label class="flex items-center space-x-2">
+              <input id="auto-scroll" type="checkbox" checked class="rounded border-gray-300 text-brand-blue focus:ring-brand-blue">
+              <span class="text-sm text-gray-600 dark:text-gray-400">自動スクロール</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="log-container" class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 h-64 overflow-y-auto font-mono text-sm">
+          <div class="text-gray-500 dark:text-gray-400">テストパネル初期化中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="mt-8 bg-blue-50 dark:bg-blue-900 rounded-xl p-6 border border-blue-200 dark:border-blue-700">
+      <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">使用方法</h3>
+
+      <div class="text-blue-800 dark:text-blue-200 space-y-2 text-sm">
+        <p><strong>1. データ生成開始:</strong> 間隔を設定して「データ生成開始」ボタンをクリック</p>
+        <p><strong>2. 履歴データ:</strong> 過去のデータを一括生成してグラフの表示を確認</p>
+        <p><strong>3. 異常データ:</strong> システムの異常処理をテスト</p>
+        <p><strong>4. ダッシュボード確認:</strong> メインダッシュボードでリアルタイム処理を確認</p>
+
+        <div class="mt-4 p-3 bg-blue-100 dark:bg-blue-800 rounded-lg">
+          <p class="font-medium">⚠️ 注意</p>
+          <p>このテストパネルは開発・検証用です。本番環境では使用しないでください。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- JavaScript Modules -->
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/firestore-service.js"></script>
+  <script type="module" src="js/weather-service.js"></script>
+  <script type="module" src="js/test-data-generator.js"></script>
+  <script type="module">
+    import { testDataGenerator } from './js/test-data-generator.js';
+
+    class TestPanel {
+      constructor() {
+        this.logContainer = document.getElementById('log-container');
+        this.autoScroll = document.getElementById('auto-scroll');
+
+        this.setupEventListeners();
+        this.updateStatus();
+        this.renderNodeList();
+
+        // Status update interval
+        setInterval(() => this.updateStatus(), 1000);
+
+        this.log('🧪 テストパネル初期化完了');
+      }
+
+      setupEventListeners() {
+        // Basic generation controls
+        document.getElementById('start-generation').addEventListener('click', () => {
+          const interval = parseInt(document.getElementById('generation-interval').value) * 1000;
+          testDataGenerator.startGeneration(interval);
+          this.updateButtons();
+          this.log(`▶️ データ生成開始 (間隔: ${interval/1000}秒)`);
+        });
+
+        document.getElementById('stop-generation').addEventListener('click', () => {
+          testDataGenerator.stopGeneration();
+          this.updateButtons();
+          this.log('⏹️ データ生成停止');
+        });
+
+        document.getElementById('single-measurement').addEventListener('click', async () => {
+          try {
+            const measurement = await testDataGenerator.generateMeasurement();
+            this.log(`📡 単発測定生成: ${measurement.nodeId} = ${measurement.observedC}°C`);
+          } catch (error) {
+            this.log(`❌ 単発測定エラー: ${error.message}`, 'error');
+          }
+        });
+
+        // Advanced generation
+        document.getElementById('generate-historical').addEventListener('click', async () => {
+          const count = parseInt(document.getElementById('historical-count').value);
+          const interval = parseInt(document.getElementById('historical-interval').value);
+
+          this.log(`📊 履歴データ生成開始 (${count}件, ${interval}分間隔)`);
+
+          try {
+            await testDataGenerator.generateHistoricalData(count, interval);
+            this.log(`✅ 履歴データ生成完了`);
+          } catch (error) {
+            this.log(`❌ 履歴データ生成エラー: ${error.message}`, 'error');
+          }
+        });
+
+        document.getElementById('generate-anomaly').addEventListener('click', async () => {
+          this.log('⚠️ 異常データ生成開始');
+          try {
+            await testDataGenerator.generateAnomalyData();
+            this.log('✅ 異常データ生成完了');
+          } catch (error) {
+            this.log(`❌ 異常データ生成エラー: ${error.message}`, 'error');
+          }
+        });
+
+        document.getElementById('generate-forecast').addEventListener('click', async () => {
+          this.log('🌤️ 予測データ生成開始');
+          try {
+            await testDataGenerator.generateForecastData();
+            this.log('✅ 予測データ生成完了');
+          } catch (error) {
+            this.log(`❌ 予測データ生成エラー: ${error.message}`, 'error');
+          }
+        });
+
+        // Node management
+        document.getElementById('add-node').addEventListener('click', () => {
+          const nodeId = document.getElementById('new-node-id').value.trim();
+          const baseTemp = parseFloat(document.getElementById('new-node-temp').value);
+
+          if (nodeId && !isNaN(baseTemp)) {
+            testDataGenerator.nodeIds.push(nodeId);
+            testDataGenerator.baseTemperatures.push(baseTemp);
+            this.renderNodeList();
+            this.log(`➕ ノード追加: ${nodeId} (基準温度: ${baseTemp}°C)`);
+
+            // Clear inputs
+            document.getElementById('new-node-id').value = '';
+            document.getElementById('new-node-temp').value = '';
+          }
+        });
+
+        // System tools
+        document.getElementById('clear-logs').addEventListener('click', () => {
+          this.logContainer.innerHTML = '';
+          this.log('🧹 ログクリア');
+        });
+
+        document.getElementById('export-config').addEventListener('click', () => {
+          const config = {
+            nodeIds: testDataGenerator.nodeIds,
+            baseTemperatures: testDataGenerator.baseTemperatures,
+            timestamp: new Date().toISOString()
+          };
+
+          const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `test-config-${new Date().toISOString().split('T')[0]}.json`;
+          a.click();
+
+          this.log('💾 設定エクスポート完了');
+        });
+
+        document.getElementById('reset-system').addEventListener('click', () => {
+          if (confirm('システムをリセットしますか？\n生成中のデータ生成は停止され、設定が初期化されます。')) {
+            testDataGenerator.stopGeneration();
+            testDataGenerator.nodeIds = ['test-node-001', 'test-node-002', 'test-node-003'];
+            testDataGenerator.baseTemperatures = [20.0, 22.5, 18.7];
+            testDataGenerator.generationCount = 0;
+
+            this.renderNodeList();
+            this.updateButtons();
+            this.log('🔄 システムリセット完了');
+          }
+        });
+      }
+
+      updateStatus() {
+        const status = testDataGenerator.getStatus();
+
+        document.getElementById('generation-status').textContent =
+          status.isGenerating ? '生成中' : '停止中';
+        document.getElementById('generation-status').className =
+          `text-2xl font-bold mb-2 ${status.isGenerating ? 'text-success' : 'text-gray-600'}`;
+
+        document.getElementById('generation-count').textContent = status.generationCount;
+        document.getElementById('node-count').textContent = status.nodeIds.length;
+
+        this.updateButtons();
+      }
+
+      updateButtons() {
+        const isGenerating = testDataGenerator.isGenerating;
+        document.getElementById('start-generation').disabled = isGenerating;
+        document.getElementById('stop-generation').disabled = !isGenerating;
+      }
+
+      renderNodeList() {
+        const nodeListEl = document.getElementById('node-list');
+        const html = testDataGenerator.nodeIds.map((nodeId, index) => {
+          const baseTemp = testDataGenerator.baseTemperatures[index];
+          return `
+            <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+              <span class="text-sm font-medium">${nodeId}</span>
+              <span class="text-sm text-gray-500">${baseTemp}°C</span>
+            </div>
+          `;
+        }).join('');
+
+        nodeListEl.innerHTML = html;
+      }
+
+      log(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString('ja-JP');
+        const colors = {
+          info: 'text-gray-800 dark:text-gray-200',
+          error: 'text-red-600 dark:text-red-400',
+          warning: 'text-yellow-600 dark:text-yellow-400',
+          success: 'text-green-600 dark:text-green-400'
+        };
+
+        const logEntry = document.createElement('div');
+        logEntry.className = colors[type] || colors.info;
+        logEntry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
+
+        this.logContainer.appendChild(logEntry);
+
+        if (this.autoScroll.checked) {
+          this.logContainer.scrollTop = this.logContainer.scrollHeight;
+        }
+
+        // Keep log size manageable
+        while (this.logContainer.children.length > 100) {
+          this.logContainer.removeChild(this.logContainer.firstChild);
+        }
+      }
+    }
+
+    // Initialize test panel
+    new TestPanel();
+  </script>
+</body>
+</html>
