@@ -300,8 +300,24 @@ class DashboardController {
 
       // Load historical weather data (extended to 12 hours for better coverage)
       let historicalWeather = [];
+
+      // Check if historical data was recently deleted
+      const historicalDeleted = localStorage.getItem('historicalDataDeleted');
+      const deletedTime = historicalDeleted ? parseInt(historicalDeleted) : 0;
+      const timeSinceDeleted = Date.now() - deletedTime;
+
+      // Use preventAutoFetch if data was recently deleted (within last 10 minutes)
+      const shouldPreventAutoFetch = timeSinceDeleted < 10 * 60 * 1000;
+
       try {
-        historicalWeather = await weatherService.getHistoricalWeather(12);
+        historicalWeather = await weatherService.getHistoricalWeather(12, {
+          preventAutoFetch: shouldPreventAutoFetch
+        });
+
+        if (shouldPreventAutoFetch) {
+          console.log('📝 Historical data was recently deleted, preventing auto-fetch for',
+            Math.ceil((10 * 60 * 1000 - timeSinceDeleted) / 1000 / 60), 'more minutes');
+        }
       } catch (error) {
         console.warn('⚠️ Failed to load historical weather data:', error);
         this.showAlert('warning', '過去の天気データの取得に失敗しました');
@@ -721,31 +737,8 @@ class DashboardController {
       });
     });
 
-    // IMPROVED SOLUTION: Generate synthetic historical forecast data at natural intervals
-    // to demonstrate realistic overlap display
-    const currentTime = new Date().getTime();
-    const hourlyIntervals = [];
-
-    // Generate hourly forecast points for the past 24 hours
-    for (let i = 24; i >= 0; i--) {
-      const forecastTime = new Date(currentTime - (i * 60 * 60 * 1000));
-      if (forecastTime.getTime() >= pastCutoff) {
-        const baseTemp = 25 + Math.sin((i / 24) * Math.PI * 2) * 5; // Sinusoidal temperature curve
-        const randomVariation = (Math.random() - 0.5) * 3; // ±1.5°C random variation
-
-        hourlyIntervals.push({
-          time: forecastTime,
-          timestamp: forecastTime.getTime(),
-          observed: null,
-          historical: null,
-          forecast: baseTemp + randomVariation,
-          type: 'synthetic-forecast'
-        });
-      }
-    }
-
-    // Add synthetic forecast points
-    allDataPoints.push(...hourlyIntervals);
+    // Use only real OpenWeatherMap API forecast data - no synthetic data generation
+    console.log('📊 Using only OpenWeatherMap API forecast data (no synthetic data)');
 
     // Add current time marker if we have forecast data
     if (forecastTimeline.length > 0 && !allDataPoints.some(p => Math.abs(p.timestamp - now.getTime()) < 300000)) {
@@ -1151,10 +1144,18 @@ class DashboardController {
         <span>更新中...</span>
       `;
 
+      // Check if historical data was recently deleted
+      const historicalDeleted = localStorage.getItem('historicalDataDeleted');
+      const deletedTime = historicalDeleted ? parseInt(historicalDeleted) : 0;
+      const timeSinceDeleted = Date.now() - deletedTime;
+      const shouldPreventAutoFetch = timeSinceDeleted < 10 * 60 * 1000;
+
       // Refresh forecast data from weather API
       const [fullForecastData, historicalWeather] = await Promise.all([
         weatherService.getFullForecastData(),
-        weatherService.getHistoricalWeather(12).catch(error => {
+        weatherService.getHistoricalWeather(12, {
+          preventAutoFetch: shouldPreventAutoFetch
+        }).catch(error => {
           console.warn('⚠️ Historical weather refresh failed:', error);
           return this.historicalWeather || [];
         })
