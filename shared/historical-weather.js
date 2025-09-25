@@ -1,25 +1,4 @@
-const path = require('path');
-
-function loadAxios() {
-  const candidates = [
-    () => require('axios'),
-    () => require(path.resolve(__dirname, '../web-service/node_modules/axios')),
-    () => require(path.resolve(__dirname, '../cron-job/node_modules/axios'))
-  ];
-
-  let lastError;
-  for (const loader of candidates) {
-    try {
-      return loader();
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError || new Error('axios module not found');
-}
-
-const axios = loadAxios();
+const axios = require('axios');
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
