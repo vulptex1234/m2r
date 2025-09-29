@@ -1282,6 +1282,22 @@ class DashboardController {
     setInterval(async () => {
       await this.fetchDeviceMeasurements(1, { silent: true });
     }, 60000);
+
+    // Periodically update historical weather data (every hour)
+    setInterval(async () => {
+      try {
+        console.log('🕐 Auto-updating historical weather data...');
+        const historicalWeather = await weatherService.getHistoricalWeather(12);
+
+        if (historicalWeather && historicalWeather.length > 0) {
+          this.historicalWeather = historicalWeather;
+          this.updateChart();
+          console.log('✅ Historical weather data updated automatically:', historicalWeather.length, 'points');
+        }
+      } catch (error) {
+        console.warn('⚠️ Auto-update of historical weather failed:', error);
+      }
+    }, 60 * 60 * 1000); // 1 hour = 60 * 60 * 1000 ms
   }
 
   /**
