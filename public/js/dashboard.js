@@ -271,8 +271,64 @@ class DashboardController {
           }
         ]
       },
-      options: this.getChartOptions('温度 (°C)', '過去の気象データ')
+      options: this.getHistoricalChartOptions()
     });
+  }
+
+  /**
+   * Get historical chart options with time scale
+   */
+  getHistoricalChartOptions() {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: true,
+          text: '過去の気象データ',
+          font: {
+            size: 12
+          },
+          color: '#666'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          title: {
+            display: true,
+            text: '温度 (°C)'
+          },
+          ticks: {
+            maxTicksLimit: 6
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: '時刻'
+          },
+          type: 'time',
+          time: {
+            unit: 'hour',
+            displayFormats: {
+              hour: 'MM/dd HH:00'
+            }
+          },
+          ticks: {
+            maxTicksLimit: 10,
+            autoSkip: true
+          }
+        }
+      },
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      }
+    };
   }
 
   /**
@@ -877,15 +933,21 @@ class DashboardController {
       return timeA - timeB;
     });
 
-    const labels = filteredHistoricalWeather.map(item => {
+    // Process data for time-scale chart (x-y coordinates)
+    const historicalDataPoints = filteredHistoricalWeather.map(item => {
       const time = item.dateTime || new Date(item.timestamp);
-      return this.formatTimeForChart(time);
+      // Normalize to exact hour (00 minutes) to match database format
+      const normalizedTime = new Date(time);
+      normalizedTime.setMinutes(0, 0, 0);
+
+      return {
+        x: normalizedTime,
+        y: item.temperature
+      };
     });
 
-    const temperatureData = filteredHistoricalWeather.map(item => item.temperature);
-
-    this.historicalChart.data.labels = labels;
-    this.historicalChart.data.datasets[0].data = temperatureData;
+    this.historicalChart.data.labels = []; // Not needed for time scale
+    this.historicalChart.data.datasets[0].data = historicalDataPoints;
     this.historicalChart.update('none');
   }
 
