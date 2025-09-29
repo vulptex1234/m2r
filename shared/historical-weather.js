@@ -251,7 +251,7 @@ async function fetchHistoricalByHours({
   const now = new Date();
   const results = [];
 
-  for (let offset = hours; offset >= 1; offset--) {
+  for (let offset = hours; offset >= 0; offset--) {
     const target = new Date(now.getTime() - offset * 60 * 60 * 1000);
 
     try {
@@ -263,7 +263,7 @@ async function fetchHistoricalByHours({
       results.push({ error: error.message, timestamp: target.getTime() });
     }
 
-    if (offset > 1) {
+    if (offset > 0) {
       await delay(delayMs);
     }
   }
