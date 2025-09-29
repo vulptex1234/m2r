@@ -276,7 +276,7 @@ class DashboardController {
   }
 
   /**
-   * Initialize forecast chart
+   * Initialize forecast chart with horizontal scrolling capability
    */
   initializeForecastChart() {
     const ctx = document.getElementById('forecast-chart')?.getContext('2d');
@@ -288,7 +288,7 @@ class DashboardController {
         labels: [],
         datasets: [
           {
-            label: '予測温度',
+            label: '予測温度 (現在)',
             data: [],
             borderColor: '#FF9800',
             backgroundColor: 'rgba(255, 152, 0, 0.1)',
@@ -298,10 +298,24 @@ class DashboardController {
             borderDash: [5, 5],
             spanGaps: true,
             pointRadius: 3
+          },
+          {
+            label: '予測温度 (過去)',
+            data: [],
+            borderColor: '#FF9800',
+            backgroundColor: 'rgba(255, 152, 0, 0.05)',
+            borderWidth: 1,
+            fill: false,
+            tension: 0.1,
+            borderDash: [2, 8],
+            spanGaps: true,
+            pointRadius: 2,
+            pointBackgroundColor: '#FF9800',
+            pointBorderColor: '#FF9800'
           }
         ]
       },
-      options: this.getChartOptions('温度 (°C)', '天気予報データ')
+      options: this.getForecastChartOptions()
     });
   }
 
@@ -344,6 +358,80 @@ class DashboardController {
           ticks: {
             maxTicksLimit: 8
           }
+        }
+      },
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      }
+    };
+  }
+
+  /**
+   * Get forecast chart options with horizontal scrolling
+   */
+  getForecastChartOptions() {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: true,
+          text: '天気予報データ (スクロール可能)',
+          font: {
+            size: 12
+          },
+          color: '#666'
+        },
+        zoom: {
+          zoom: {
+            wheel: {
+              enabled: true,
+            },
+            pinch: {
+              enabled: true
+            },
+            mode: 'x',
+          },
+          pan: {
+            enabled: true,
+            mode: 'x'
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          title: {
+            display: true,
+            text: '温度 (°C)'
+          },
+          ticks: {
+            maxTicksLimit: 6
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: '時刻'
+          },
+          type: 'time',
+          time: {
+            unit: 'hour',
+            displayFormats: {
+              hour: 'MM/dd HH:mm'
+            }
+          },
+          ticks: {
+            maxTicksLimit: 10,
+            autoSkip: true
+          },
+          // Enable horizontal scrolling
+          min: undefined, // Will be set dynamically
+          max: undefined  // Will be set dynamically
         }
       },
       interaction: {
@@ -795,7 +883,7 @@ class DashboardController {
   }
 
   /**
-   * Update forecast chart with future weather data
+   * Update forecast chart with all historical and future weather data (with horizontal scrolling)
    */
   updateForecastChart(fullForecastData) {
     if (!this.forecastChart) return;
@@ -804,55 +892,84 @@ class DashboardController {
       // Show single current forecast point if available
       if (fullForecastData?.current !== null) {
         const now = new Date();
-        this.forecastChart.data.labels = [this.formatTimeForChart(now)];
-        this.forecastChart.data.datasets[0].data = [fullForecastData.current];
+        this.forecastChart.data.labels = [now];
+        this.forecastChart.data.datasets[0].data = [{ x: now, y: fullForecastData.current }];
+        this.forecastChart.data.datasets[1].data = [];
       } else {
         this.forecastChart.data.labels = [];
         this.forecastChart.data.datasets[0].data = [];
+        this.forecastChart.data.datasets[1].data = [];
       }
       this.forecastChart.update('none');
       return;
     }
 
-    const now = new Date();
-    const timeframes = {
-      '1h': 60 * 60 * 1000,
-      '6h': 6 * 60 * 60 * 1000,
-      '24h': 24 * 60 * 60 * 1000,
-      '72h': 72 * 60 * 60 * 1000,
-      '120h': 120 * 60 * 60 * 1000
+    const now = new Date().getTime();
+
+    // Process all forecast timeline data (including historical predictions)
+    const processTimelineData = (timeline) => {
+      return timeline.map(item => {
+        const timestamp = item.timestamp?.toDate ? item.timestamp.toDate().getTime() :
+                         (item.timestamp instanceof Date ? item.timestamp.getTime() :
+                          (item.timestamp || new Date(item.dateTime).getTime()));
+
+        return {
+          x: new Date(timestamp),
+          y: item.temperature,
+          timestamp: timestamp,
+          description: item.description || '',
+          icon: item.icon || ''
+        };
+      }).sort((a, b) => a.timestamp - b.timestamp);
     };
 
-    const futureCutoff = now.getTime() + timeframes[this.chartTimeframe];
+    const allForecastData = processTimelineData(fullForecastData.timeline);
 
-    const forecastTimeline = fullForecastData.timeline.filter(item => {
-      const timestamp = item.timestamp || item.dateTime?.getTime();
-      return timestamp >= (now.getTime() - 30 * 60 * 1000) && timestamp <= futureCutoff;
-    }).sort((a, b) => {
-      const timeA = a.timestamp || a.dateTime?.getTime();
-      const timeB = b.timestamp || b.dateTime?.getTime();
-      return timeA - timeB;
-    });
+    // Separate past predictions (historical) from current/future predictions
+    const pastPredictions = allForecastData.filter(item => item.timestamp < now);
+    const currentAndFuturePredictions = allForecastData.filter(item => item.timestamp >= now);
 
-    // Add current forecast point if not already present
-    if (fullForecastData.current !== null && !forecastTimeline.some(f => Math.abs((f.timestamp || f.dateTime?.getTime()) - now.getTime()) < 300000)) {
-      forecastTimeline.unshift({
-        timestamp: now.getTime(),
-        dateTime: now,
-        temperature: fullForecastData.current
+    // Add current forecast point if available and not already present
+    if (fullForecastData.current !== null && !currentAndFuturePredictions.some(f => Math.abs(f.timestamp - now) < 300000)) {
+      currentAndFuturePredictions.unshift({
+        x: new Date(now),
+        y: fullForecastData.current,
+        timestamp: now,
+        description: 'Current forecast',
+        icon: ''
       });
     }
 
-    const labels = forecastTimeline.map(item => {
-      const time = item.dateTime || new Date(item.timestamp);
-      return this.formatTimeForChart(time);
-    });
+    // Set up time range for horizontal scrolling
+    const allTimestamps = allForecastData.map(item => item.timestamp);
+    if (allTimestamps.length > 0) {
+      const minTime = Math.min(...allTimestamps);
+      const maxTime = Math.max(...allTimestamps);
+      const timeRange = maxTime - minTime;
 
-    const temperatureData = forecastTimeline.map(item => item.temperature);
+      // Show last 24 hours by default, but allow scrolling to see all data
+      const defaultViewStart = Math.max(minTime, now - 24 * 60 * 60 * 1000);
+      const defaultViewEnd = Math.max(maxTime, now + 24 * 60 * 60 * 1000);
 
-    this.forecastChart.data.labels = labels;
-    this.forecastChart.data.datasets[0].data = temperatureData;
+      // Update chart scales for scrolling
+      this.forecastChart.options.scales.x.min = new Date(defaultViewStart);
+      this.forecastChart.options.scales.x.max = new Date(defaultViewEnd);
+    }
+
+    // Update chart data
+    this.forecastChart.data.labels = []; // Not needed for time scale
+    this.forecastChart.data.datasets[0].data = currentAndFuturePredictions;
+    this.forecastChart.data.datasets[1].data = pastPredictions;
+
     this.forecastChart.update('none');
+
+    console.log('📊 Forecast chart updated with scrollable timeline:', {
+      totalPredictions: allForecastData.length,
+      pastPredictions: pastPredictions.length,
+      currentAndFuture: currentAndFuturePredictions.length,
+      timeRange: allForecastData.length > 0 ?
+        `${new Date(Math.min(...allTimestamps)).toISOString()} - ${new Date(Math.max(...allTimestamps)).toISOString()}` : 'No data'
+    });
   }
 
   /**

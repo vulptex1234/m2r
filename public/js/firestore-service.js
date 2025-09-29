@@ -77,7 +77,8 @@ export class FirestoreService {
         forecastC: data.forecastC ?? null,
         forecastTime: data.forecastTime,
         fetchedAt: data.fetchedAt,
-        provider: data.provider || 'openweathermap'
+        provider: data.provider || 'openweathermap',
+        fullForecast: data.fullForecast || []
       };
     });
   }
@@ -188,14 +189,14 @@ export class FirestoreService {
           };
         };
 
-        let preservedHistory = [];
+        // Preserve ALL existing historical data (no deletion)
+        let existingHistory = [];
         if (existingSnapshot.exists) {
           const existingData = existingSnapshot.data();
           if (Array.isArray(existingData.fullForecast)) {
-            const sortedExisting = existingData.fullForecast
+            existingHistory = existingData.fullForecast
               .map(parseTimelineItem)
               .sort((a, b) => a.timestamp - b.timestamp);
-            preservedHistory = sortedExisting.slice(-3);
           }
         }
 
@@ -203,11 +204,17 @@ export class FirestoreService {
           .map(parseTimelineItem)
           .sort((a, b) => a.timestamp - b.timestamp);
 
-        const mergedByTimestamp = new Map(newTimeline.map(item => [item.timestamp, item]));
-        preservedHistory.forEach(item => {
-          if (!mergedByTimestamp.has(item.timestamp)) {
-            mergedByTimestamp.set(item.timestamp, item);
-          }
+        // Smart merge: preserve all existing data, overwrite overlapping timestamps, add new ones
+        const mergedByTimestamp = new Map();
+
+        // First, add all existing data (preserve historical predictions)
+        existingHistory.forEach(item => {
+          mergedByTimestamp.set(item.timestamp, item);
+        });
+
+        // Then, overwrite with new data (update overlapping timestamps, add new ones)
+        newTimeline.forEach(item => {
+          mergedByTimestamp.set(item.timestamp, item);
         });
 
         const mergedTimeline = Array.from(mergedByTimestamp.values())
@@ -227,7 +234,22 @@ export class FirestoreService {
       await docRef.set(dataToSave, { merge: true });
 
       const timelineCount = dataToSave.fullForecast ? ` (${dataToSave.fullForecast.length} timeline points)` : '';
-      console.log(`🌤️ Forecast cached: ${forecastData.forecastC}°C${timelineCount}`);
+      const existingCount = existingHistory.length;
+      const newCount = newTimeline.length;
+      const preservedCount = existingCount - newTimeline.filter(item =>
+        existingHistory.some(existing => existing.timestamp === item.timestamp)
+      ).length;
+
+      console.log(`🌤️ Forecast cached: ${forecastData.forecastC}°C${timelineCount}`, {
+        preserved: preservedCount,
+        updated: newTimeline.filter(item =>
+          existingHistory.some(existing => existing.timestamp === item.timestamp)
+        ).length,
+        new: newCount - newTimeline.filter(item =>
+          existingHistory.some(existing => existing.timestamp === item.timestamp)
+        ).length,
+        total: dataToSave.fullForecast?.length || 0
+      });
     });
   }
 
