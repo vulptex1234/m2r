@@ -1291,7 +1291,7 @@ class DashboardController {
 
         if (historicalWeather && historicalWeather.length > 0) {
           this.historicalWeather = historicalWeather;
-          this.updateChart();
+          await this.updateChartWithAllSources();
           console.log('✅ Historical weather data updated automatically:', historicalWeather.length, 'points');
         }
       } catch (error) {
