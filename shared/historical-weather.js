@@ -257,7 +257,14 @@ async function fetchHistoricalByHours({
     try {
       const { point } = await fetchSinglePoint({ apiKey, lat, lon, dateTime: target, units, lang });
       if (point) {
-        results.push(point);
+        // Add hour and time fields for consistency with fetchHistoricalByDate
+        const hour = target.getHours();
+        results.push({
+          ...point,
+          hour,
+          time: convertToJapaneseTime(point.timestamp / 1000),
+          unix_timestamp: Math.floor(point.timestamp / 1000)
+        });
       }
     } catch (error) {
       results.push({ error: error.message, timestamp: target.getTime() });
