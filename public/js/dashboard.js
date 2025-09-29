@@ -380,7 +380,7 @@ class DashboardController {
         },
         title: {
           display: true,
-          text: '天気予報データ (スクロール可能)',
+          text: '天気予報データ (横軸スライド可能)',
           font: {
             size: 12
           },
@@ -389,16 +389,23 @@ class DashboardController {
         zoom: {
           zoom: {
             wheel: {
-              enabled: true,
+              enabled: false,  // Disable wheel zoom
             },
             pinch: {
-              enabled: true
+              enabled: false   // Disable pinch zoom
             },
             mode: 'x',
           },
           pan: {
-            enabled: true,
-            mode: 'x'
+            enabled: true,     // Enable horizontal sliding
+            mode: 'x',
+            threshold: 10,     // Minimum distance to start panning
+            rangeMin: {
+              x: null          // Will be set dynamically based on data
+            },
+            rangeMax: {
+              x: null          // Will be set dynamically based on data
+            }
           }
         }
       },
@@ -940,20 +947,33 @@ class DashboardController {
       });
     }
 
-    // Set up time range for horizontal scrolling
+    // Set up fixed 24-hour viewing window with horizontal sliding capability
     const allTimestamps = allForecastData.map(item => item.timestamp);
     if (allTimestamps.length > 0) {
       const minTime = Math.min(...allTimestamps);
       const maxTime = Math.max(...allTimestamps);
-      const timeRange = maxTime - minTime;
 
-      // Show last 24 hours by default, but allow scrolling to see all data
-      const defaultViewStart = Math.max(minTime, now - 24 * 60 * 60 * 1000);
-      const defaultViewEnd = Math.max(maxTime, now + 24 * 60 * 60 * 1000);
+      // Fixed 24-hour viewing window centered around current time
+      const viewWindowHours = 24;
+      const viewWindowMs = viewWindowHours * 60 * 60 * 1000;
+      const viewStart = now - (viewWindowMs / 2);  // 12 hours before now
+      const viewEnd = now + (viewWindowMs / 2);    // 12 hours after now
 
-      // Update chart scales for scrolling
-      this.forecastChart.options.scales.x.min = new Date(defaultViewStart);
-      this.forecastChart.options.scales.x.max = new Date(defaultViewEnd);
+      // Set fixed viewing window
+      this.forecastChart.options.scales.x.min = new Date(viewStart);
+      this.forecastChart.options.scales.x.max = new Date(viewEnd);
+
+      // Set pan limits to allow sliding through all available data
+      const panPadding = 60 * 60 * 1000; // 1 hour padding
+      this.forecastChart.options.plugins.zoom.pan.rangeMin.x = new Date(minTime - panPadding);
+      this.forecastChart.options.plugins.zoom.pan.rangeMax.x = new Date(maxTime + panPadding);
+
+      console.log('🔄 Chart slide setup:', {
+        viewWindow: `${viewWindowHours} hours`,
+        viewRange: `${new Date(viewStart).toISOString()} - ${new Date(viewEnd).toISOString()}`,
+        slideRange: `${new Date(minTime - panPadding).toISOString()} - ${new Date(maxTime + panPadding).toISOString()}`,
+        dataRange: `${new Date(minTime).toISOString()} - ${new Date(maxTime).toISOString()}`
+      });
     }
 
     // Update chart data
@@ -963,10 +983,13 @@ class DashboardController {
 
     this.forecastChart.update('none');
 
-    console.log('📊 Forecast chart updated with scrollable timeline:', {
+    console.log('📊 Forecast chart updated with slide functionality:', {
       totalPredictions: allForecastData.length,
       pastPredictions: pastPredictions.length,
       currentAndFuture: currentAndFuturePredictions.length,
+      slideEnabled: this.forecastChart.options.plugins.zoom.pan.enabled,
+      viewWindow: '24 hours (fixed)',
+      interaction: 'Drag to slide horizontally through time',
       timeRange: allForecastData.length > 0 ?
         `${new Date(Math.min(...allTimestamps)).toISOString()} - ${new Date(Math.max(...allTimestamps)).toISOString()}` : 'No data'
     });
