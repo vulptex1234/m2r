@@ -7,7 +7,9 @@ import { RateLevel } from './analytics-engine.js';
 
 class DashboardController {
   constructor() {
-    this.chart = null;
+    this.measurementsChart = null;
+    this.historicalChart = null;
+    this.forecastChart = null;
     this.chartTimeframe = '1h'; // 1h, 6h, 24h
     this.nodeStates = new Map();
 
@@ -89,8 +91,8 @@ class DashboardController {
       // Setup event listeners
       this.setupEventListeners();
 
-      // Initialize chart
-      this.initializeChart();
+      // Initialize charts
+      this.initializeCharts();
 
       // Load initial data
       await this.loadInitialData();
@@ -194,27 +196,66 @@ class DashboardController {
   }
 
   /**
-   * Initialize temperature chart
+   * Initialize separate charts for measurements, historical, and forecast data
    */
-  initializeChart() {
-    const ctx = this.elements.temperatureChart?.getContext('2d');
+  initializeCharts() {
+    this.initializeMeasurementsChart();
+    this.initializeHistoricalChart();
+    this.initializeForecastChart();
+  }
+
+  /**
+   * Initialize measurements chart (ESP32 & Firestore data)
+   */
+  initializeMeasurementsChart() {
+    const ctx = document.getElementById('measurements-chart')?.getContext('2d');
     if (!ctx) return;
 
-    this.chart = new Chart(ctx, {
+    this.measurementsChart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: [],
         datasets: [
           {
-            label: '実測温度',
+            label: '実測温度 (ESP32)',
             data: [],
             borderColor: '#2196F3',
             backgroundColor: 'rgba(33, 150, 243, 0.1)',
             borderWidth: 2,
             fill: false,
             tension: 0.1,
-            spanGaps: true
+            spanGaps: true,
+            pointRadius: 3
           },
+          {
+            label: '実測温度 (Firestore)',
+            data: [],
+            borderColor: '#4CAF50',
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1,
+            spanGaps: true,
+            pointRadius: 3
+          }
+        ]
+      },
+      options: this.getChartOptions('実測温度 (°C)', '実測値データ')
+    });
+  }
+
+  /**
+   * Initialize historical weather chart
+   */
+  initializeHistoricalChart() {
+    const ctx = document.getElementById('historical-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    this.historicalChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
           {
             label: '過去の天気',
             data: [],
@@ -227,7 +268,25 @@ class DashboardController {
             pointBorderColor: '#9C27B0',
             pointRadius: 4,
             spanGaps: true
-          },
+          }
+        ]
+      },
+      options: this.getChartOptions('温度 (°C)', '過去の気象データ')
+    });
+  }
+
+  /**
+   * Initialize forecast chart
+   */
+  initializeForecastChart() {
+    const ctx = document.getElementById('forecast-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    this.forecastChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
           {
             label: '予測温度',
             data: [],
@@ -237,48 +296,61 @@ class DashboardController {
             fill: false,
             tension: 0.1,
             borderDash: [5, 5],
-            spanGaps: true
+            spanGaps: true,
+            pointRadius: 3
           }
         ]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'top',
-          },
-          title: {
-            display: false
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: false,
-            title: {
-              display: true,
-              text: '温度 (°C)'
-            },
-            ticks: {
-              maxTicksLimit: 8  // Y軸のラベル数を制限
-            }
-          },
-          x: {
-            title: {
-              display: true,
-              text: '時刻'
-            },
-            ticks: {
-              maxTicksLimit: 12  // X軸のラベル数を制限（長期間表示で重複防止）
-            }
-          }
-        },
-        interaction: {
-          intersect: false,
-          mode: 'index'
-        }
-      }
+      options: this.getChartOptions('温度 (°C)', '天気予報データ')
     });
+  }
+
+  /**
+   * Get common chart options
+   */
+  getChartOptions(yAxisTitle, subtitle) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: true,
+          text: subtitle,
+          font: {
+            size: 12
+          },
+          color: '#666'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          title: {
+            display: true,
+            text: yAxisTitle
+          },
+          ticks: {
+            maxTicksLimit: 6
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: '時刻'
+          },
+          ticks: {
+            maxTicksLimit: 8
+          }
+        }
+      },
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      }
+    };
   }
 
   /**
@@ -596,10 +668,22 @@ class DashboardController {
   }
 
   /**
-   * Update chart with new data
+   * Update separated charts with new data
    */
   updateChart(measurements, fullForecastData = null, historicalWeather = null) {
-    if (!this.chart) return;
+    // Update each chart separately
+    this.updateMeasurementsChart(measurements);
+    this.updateHistoricalChart(historicalWeather);
+    this.updateForecastChart(fullForecastData);
+
+    console.log('📊 All three charts updated successfully');
+  }
+
+  /**
+   * Update measurements chart with ESP32 and Firestore data
+   */
+  updateMeasurementsChart(measurements) {
+    if (!this.measurementsChart) return;
 
     const now = new Date();
     const timeframes = {
@@ -610,9 +694,7 @@ class DashboardController {
       '120h': 120 * 60 * 60 * 1000
     };
 
-    // Get time boundaries for chart
     const pastCutoff = now.getTime() - timeframes[this.chartTimeframe];
-    const futureCutoff = now.getTime() + timeframes[this.chartTimeframe];
 
     // Process Firestore measurement data
     const filteredFirestoreMeasurements = measurements.filter(m => {
@@ -627,14 +709,14 @@ class DashboardController {
     // Process device measurement data (ESP32)
     const filteredDeviceMeasurements = this.deviceMeasurements.filter(m => {
       const time = new Date(m.measuredAt || m.timestamp).getTime();
-      return time >= pastCutoff && time <= now.getTime(); // Device measurements are current data
+      return time >= pastCutoff && time <= now.getTime();
     }).sort((a, b) => {
       const timeA = new Date(a.measuredAt || a.timestamp).getTime();
       const timeB = new Date(b.measuredAt || b.timestamp).getTime();
       return timeA - timeB;
     });
 
-    // Combine all measurements for actual temperature display
+    // Combine all measurements for timeline
     const allMeasurements = [...filteredFirestoreMeasurements, ...filteredDeviceMeasurements]
       .sort((a, b) => {
         const timeA = a.recordedAt?.toDate ? a.recordedAt.toDate().getTime() : new Date(a.measuredAt || a.timestamp).getTime();
@@ -642,201 +724,135 @@ class DashboardController {
         return timeA - timeB;
       });
 
-    // Process historical weather data
-    let filteredHistoricalWeather = [];
-    if (historicalWeather && Array.isArray(historicalWeather)) {
-      filteredHistoricalWeather = historicalWeather.filter(item => {
-        const timestamp = item.timestamp || item.dateTime?.getTime();
-        // Allow historical data to extend 30 minutes into the present for better continuity
-        return timestamp >= pastCutoff && timestamp <= (now.getTime() + 30 * 60 * 1000);
-      }).sort((a, b) => {
-        const timeA = a.timestamp || a.dateTime?.getTime();
-        const timeB = b.timestamp || b.dateTime?.getTime();
-        return timeA - timeB;
-      });
-    }
+    // Prepare chart data
+    const labels = allMeasurements.map(m => {
+      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt || m.timestamp);
+      return this.formatTimeForChart(time);
+    });
 
-    // Process forecast data
-    let forecastTimeline = [];
-    if (fullForecastData?.timeline && Array.isArray(fullForecastData.timeline)) {
-      forecastTimeline = fullForecastData.timeline.filter(item => {
-        const timestamp = item.timestamp || item.dateTime?.getTime();
-        // Allow forecast data to start 30 minutes before current time for better continuity
-        return timestamp >= (now.getTime() - 30 * 60 * 1000) && timestamp <= futureCutoff;
-      }).sort((a, b) => {
-        const timeA = a.timestamp || a.dateTime?.getTime();
-        const timeB = b.timestamp || b.dateTime?.getTime();
-        return timeA - timeB;
-      });
-    }
+    const esp32Data = [];
+    const firestoreData = [];
 
-    // If no data at all, try to show current forecast point
-    if (!allMeasurements.length && !filteredHistoricalWeather.length && !forecastTimeline.length && fullForecastData?.current !== null) {
-      this.chart.data.labels = [this.formatTimeForChart(now)];
-      this.chart.data.datasets[0].data = []; // 実測温度
-      this.chart.data.datasets[1].data = []; // 過去の天気
-      this.chart.data.datasets[2].data = [fullForecastData.current]; // 予測温度
-      this.chart.update('none');
+    allMeasurements.forEach(m => {
+      if (m.mode === 'DEVICE') {
+        esp32Data.push(m.observedC);
+        firestoreData.push(null);
+      } else {
+        esp32Data.push(null);
+        firestoreData.push(m.observedC);
+      }
+    });
 
-      console.log('📊 Chart updated with single current forecast:', fullForecastData.current);
+    this.measurementsChart.data.labels = labels;
+    this.measurementsChart.data.datasets[0].data = esp32Data;
+    this.measurementsChart.data.datasets[1].data = firestoreData;
+    this.measurementsChart.update('none');
+  }
+
+  /**
+   * Update historical chart with past weather data
+   */
+  updateHistoricalChart(historicalWeather) {
+    if (!this.historicalChart) return;
+
+    if (!historicalWeather || !Array.isArray(historicalWeather) || historicalWeather.length === 0) {
+      this.historicalChart.data.labels = [];
+      this.historicalChart.data.datasets[0].data = [];
+      this.historicalChart.update('none');
       return;
     }
 
-    // Combine all data types for timeline
-    const allDataPoints = [];
+    const now = new Date();
+    const timeframes = {
+      '1h': 60 * 60 * 1000,
+      '6h': 6 * 60 * 60 * 1000,
+      '24h': 24 * 60 * 60 * 1000,
+      '72h': 72 * 60 * 60 * 1000,
+      '120h': 120 * 60 * 60 * 1000
+    };
 
-    // Add Firestore measurement points (processed data with forecasts)
-    filteredFirestoreMeasurements.forEach(m => {
-      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt);
-      allDataPoints.push({
-        time,
-        timestamp: time.getTime(),
-        observed: m.observedC,
-        historical: null,
-        forecast: m.forecastC || null,
-        type: 'firestore-measurement'
-      });
+    const pastCutoff = now.getTime() - timeframes[this.chartTimeframe];
+
+    const filteredHistoricalWeather = historicalWeather.filter(item => {
+      const timestamp = item.timestamp || item.dateTime?.getTime();
+      return timestamp >= pastCutoff && timestamp <= (now.getTime() + 30 * 60 * 1000);
+    }).sort((a, b) => {
+      const timeA = a.timestamp || a.dateTime?.getTime();
+      const timeB = b.timestamp || b.dateTime?.getTime();
+      return timeA - timeB;
     });
 
-    // Add ESP32 device measurement points (raw data, observed only)
-    filteredDeviceMeasurements.forEach(m => {
-      const time = new Date(m.measuredAt || m.timestamp);
-      allDataPoints.push({
-        time,
-        timestamp: time.getTime(),
-        observed: m.observedC,
-        historical: null,
-        forecast: null, // ESP32 devices don't provide forecasts
-        type: 'device-measurement'
-      });
+    const labels = filteredHistoricalWeather.map(item => {
+      const time = item.dateTime || new Date(item.timestamp);
+      return this.formatTimeForChart(time);
     });
 
-    // Add historical weather points (API weather data)
-    filteredHistoricalWeather.forEach(h => {
-      const time = h.dateTime || new Date(h.timestamp);
-      allDataPoints.push({
-        time,
-        timestamp: time.getTime(),
-        observed: null,
-        historical: h.temperature,
-        forecast: null,
-        type: 'historical'
-      });
+    const temperatureData = filteredHistoricalWeather.map(item => item.temperature);
+
+    this.historicalChart.data.labels = labels;
+    this.historicalChart.data.datasets[0].data = temperatureData;
+    this.historicalChart.update('none');
+  }
+
+  /**
+   * Update forecast chart with future weather data
+   */
+  updateForecastChart(fullForecastData) {
+    if (!this.forecastChart) return;
+
+    if (!fullForecastData?.timeline || !Array.isArray(fullForecastData.timeline) || fullForecastData.timeline.length === 0) {
+      // Show single current forecast point if available
+      if (fullForecastData?.current !== null) {
+        const now = new Date();
+        this.forecastChart.data.labels = [this.formatTimeForChart(now)];
+        this.forecastChart.data.datasets[0].data = [fullForecastData.current];
+      } else {
+        this.forecastChart.data.labels = [];
+        this.forecastChart.data.datasets[0].data = [];
+      }
+      this.forecastChart.update('none');
+      return;
+    }
+
+    const now = new Date();
+    const timeframes = {
+      '1h': 60 * 60 * 1000,
+      '6h': 6 * 60 * 60 * 1000,
+      '24h': 24 * 60 * 60 * 1000,
+      '72h': 72 * 60 * 60 * 1000,
+      '120h': 120 * 60 * 60 * 1000
+    };
+
+    const futureCutoff = now.getTime() + timeframes[this.chartTimeframe];
+
+    const forecastTimeline = fullForecastData.timeline.filter(item => {
+      const timestamp = item.timestamp || item.dateTime?.getTime();
+      return timestamp >= (now.getTime() - 30 * 60 * 1000) && timestamp <= futureCutoff;
+    }).sort((a, b) => {
+      const timeA = a.timestamp || a.dateTime?.getTime();
+      const timeB = b.timestamp || b.dateTime?.getTime();
+      return timeA - timeB;
     });
 
-    // Add forecast points (future data)
-    forecastTimeline.forEach(f => {
-      const time = f.dateTime || new Date(f.timestamp);
-      allDataPoints.push({
-        time,
-        timestamp: time.getTime(),
-        observed: null,
-        historical: null,
-        forecast: f.temperature,
-        type: 'forecast'
-      });
-    });
-
-    // Use only real OpenWeatherMap API forecast data - no synthetic data generation
-    console.log('📊 Using only OpenWeatherMap API forecast data (no synthetic data)');
-
-    // Add current time marker if we have forecast data
-    if (forecastTimeline.length > 0 && !allDataPoints.some(p => Math.abs(p.timestamp - now.getTime()) < 300000)) {
-      allDataPoints.push({
-        time: now,
+    // Add current forecast point if not already present
+    if (fullForecastData.current !== null && !forecastTimeline.some(f => Math.abs((f.timestamp || f.dateTime?.getTime()) - now.getTime()) < 300000)) {
+      forecastTimeline.unshift({
         timestamp: now.getTime(),
-        observed: null,
-        historical: null,
-        forecast: fullForecastData?.current || forecastTimeline[0]?.temperature,
-        type: 'current'
+        dateTime: now,
+        temperature: fullForecastData.current
       });
     }
 
-    // Group data points by timestamp to merge same-time data
-    // Round timestamps to nearest hour for better grouping of related data
-    const groupedData = new Map();
-
-    console.log('📊 Raw data points before grouping:', allDataPoints.map(p => ({
-      time: new Date(p.timestamp).toISOString(),
-      type: p.type,
-      observed: p.observed,
-      forecast: p.forecast,
-      historical: p.historical
-    })));
-
-    allDataPoints.forEach(point => {
-      // Round timestamp to nearest 10 minutes for better grouping
-      const roundedTime = Math.round(point.timestamp / (10 * 60 * 1000)) * (10 * 60 * 1000);
-      const timeKey = roundedTime;
-      if (!groupedData.has(timeKey)) {
-        groupedData.set(timeKey, {
-          time: point.time,
-          timestamp: timeKey,
-          observed: null,
-          historical: null,
-          forecast: null
-        });
-      }
-
-      const existing = groupedData.get(timeKey);
-
-      // Merge data with priority rules:
-      // - observed: ESP32 device data takes priority over Firestore data (more current)
-      // - forecast: preserve non-null forecast values (don't overwrite with null)
-      // - historical: always overwrite (should be unique per timestamp)
-
-      if (point.observed !== null) {
-        // ESP32 device measurements take priority for observed values
-        if (point.type === 'device-measurement' || existing.observed === null) {
-          existing.observed = point.observed;
-        }
-      }
-
-      if (point.historical !== null) {
-        existing.historical = point.historical;
-      }
-
-      // Preserve existing forecast values (don't overwrite with null)
-      if (point.forecast !== null) {
-        existing.forecast = point.forecast;
-      }
+    const labels = forecastTimeline.map(item => {
+      const time = item.dateTime || new Date(item.timestamp);
+      return this.formatTimeForChart(time);
     });
 
-    // Convert grouped data to sorted arrays
-    const sortedData = Array.from(groupedData.values()).sort((a, b) => a.timestamp - b.timestamp);
+    const temperatureData = forecastTimeline.map(item => item.temperature);
 
-    console.log('🔗 Merged data points:', sortedData.map(p => ({
-      time: new Date(p.timestamp).toISOString(),
-      observed: p.observed,
-      forecast: p.forecast,
-      historical: p.historical,
-      hasBoth: p.observed !== null && p.forecast !== null
-    })).filter(p => p.hasBoth || p.observed !== null || p.forecast !== null));
-
-    // Prepare chart data for 3 datasets
-    const labels = sortedData.map(point => this.formatTimeForChart(point.time));
-    const observedData = sortedData.map(point => point.observed);
-    const historicalData = sortedData.map(point => point.historical);
-    const forecastData = sortedData.map(point => point.forecast);
-
-    this.chart.data.labels = labels;
-    this.chart.data.datasets[0].data = observedData; // 実測温度
-    this.chart.data.datasets[1].data = historicalData; // 過去の天気
-    this.chart.data.datasets[2].data = forecastData; // 予測温度
-    this.chart.update('none');
-
-    console.log('📊 Chart updated with merged timeline data:', {
-      rawDataPoints: allDataPoints.length,
-      mergedDataPoints: sortedData.length,
-      firestorePoints: filteredFirestoreMeasurements.length,
-      devicePoints: filteredDeviceMeasurements.length,
-      historicalPoints: filteredHistoricalWeather.length,
-      forecastPoints: forecastTimeline.length,
-      observedCount: sortedData.filter(p => p.observed !== null).length,
-      historicalCount: sortedData.filter(p => p.historical !== null).length,
-      forecastCount: sortedData.filter(p => p.forecast !== null).length,
-      timeframe: this.chartTimeframe
-    });
+    this.forecastChart.data.labels = labels;
+    this.forecastChart.data.datasets[0].data = temperatureData;
+    this.forecastChart.update('none');
   }
 
   /**
@@ -870,38 +886,12 @@ class DashboardController {
   }
 
   /**
-   * Add single measurement to chart
+   * Add single measurement to appropriate chart
    */
   addToChart(result) {
-    if (!this.chart) return;
-
-    const time = new Date(result.measuredAt || result.timestamp);
-    const label = this.formatTimeForChart(time);
-
-    // Add to chart
-    this.chart.data.labels.push(label);
-    this.chart.data.datasets[0].data.push(result.observedC); // 実測温度
-    this.chart.data.datasets[1].data.push(null); // 過去の天気（測定データには含まれない）
-    this.chart.data.datasets[2].data.push(result.forecastC); // 予測温度
-
-    // Limit data points based on timeframe
-    const maxPoints = {
-      '1h': 60,    // 1 point per minute
-      '6h': 72,    // 1 point per 5 minutes
-      '24h': 144,  // 1 point per 10 minutes
-      '72h': 72,   // 1 point per 3 hours
-      '120h': 40   // 1 point per 3 hours (OpenWeatherMap forecast data)
-    };
-
-    const limit = maxPoints[this.chartTimeframe] || 60;
-    if (this.chart.data.labels.length > limit) {
-      this.chart.data.labels.shift();
-      this.chart.data.datasets[0].data.shift();
-      this.chart.data.datasets[1].data.shift();
-      this.chart.data.datasets[2].data.shift();
-    }
-
-    this.chart.update('none');
+    // Simply refresh all charts with current data sources
+    // This ensures proper data organization across the three charts
+    this.updateChartWithAllSources();
   }
 
   /**

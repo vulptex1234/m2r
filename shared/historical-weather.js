@@ -253,6 +253,8 @@ async function fetchHistoricalByHours({
 
   for (let offset = hours; offset >= 0; offset--) {
     const target = new Date(now.getTime() - offset * 60 * 60 * 1000);
+    // Round to exact hour (00 minutes, 00 seconds, 00 milliseconds)
+    target.setMinutes(0, 0, 0);
 
     try {
       const { point } = await fetchSinglePoint({ apiKey, lat, lon, dateTime: target, units, lang });

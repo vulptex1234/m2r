@@ -194,13 +194,15 @@
     <!-- Main Dashboard Grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-      <!-- Temperature Chart -->
-      <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-        <div class="p-6">
-          <div class="flex items-center justify-between mb-6">
+      <!-- Charts Section -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- Time Range Controls -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">温度推移</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">実測値 vs 予測値</p>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">時間範囲設定</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">全チャート共通</p>
             </div>
             <div class="flex space-x-2 flex-wrap">
               <button id="chart-1h" class="px-3 py-1 text-sm bg-brand-blue text-white rounded-lg">1時間</button>
@@ -210,11 +212,59 @@
               <button id="chart-120h" class="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg">5日</button>
             </div>
           </div>
+        </div>
 
-          <div class="relative h-80">
-            <canvas id="temperature-chart"></canvas>
+        <!-- Real-time Measurements Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">🌡️ 実測値</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">ESP32デバイス・Firestoreデータ</p>
+            </div>
+            <div class="text-sm text-gray-500" id="measurements-status">
+              <!-- Status info -->
+            </div>
+          </div>
+
+          <div class="relative h-64">
+            <canvas id="measurements-chart"></canvas>
           </div>
         </div>
+
+        <!-- Historical Weather Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">📊 過去の天気</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">OpenWeatherMap 履歴データ</p>
+            </div>
+            <div class="text-sm text-gray-500" id="historical-status">
+              <!-- Status info -->
+            </div>
+          </div>
+
+          <div class="relative h-64">
+            <canvas id="historical-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Forecast Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">🔮 天気予報</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">OpenWeatherMap 予測データ</p>
+            </div>
+            <div class="text-sm text-gray-500" id="forecast-status">
+              <!-- Status info -->
+            </div>
+          </div>
+
+          <div class="relative h-64">
+            <canvas id="forecast-chart"></canvas>
+          </div>
+        </div>
+
       </div>
 
       <!-- Control Panel & System Info -->

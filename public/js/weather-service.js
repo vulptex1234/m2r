@@ -77,9 +77,11 @@ export class WeatherService {
   /**
    * Get historical weather data using backend API (default: past 3 hours)
    * @param {number} hours - Total hours to look back
+   * @param {Object} options - Additional options
+   * @param {boolean} options.preventAutoFetch - Prevent automatic fetching from API when DB is empty
    * @returns {Promise<Array>} Array of historical weather entries
    */
-  async getHistoricalWeather(hours = 3) {
+  async getHistoricalWeather(hours = 3, options = {}) {
     const cacheKey = `historical-weather-${hours}`;
 
     if (this.cache.has(cacheKey)) {
@@ -92,9 +94,14 @@ export class WeatherService {
 
     try {
       // Use backend API endpoint for historical data
-      const apiUrl = `${appConfig.api.baseUrl}${appConfig.api.endpoints.historical}?hours=${hours}`;
+      let apiUrl = `${appConfig.api.baseUrl}${appConfig.api.endpoints.historical}?hours=${hours}`;
 
-      console.log('🕰️ Fetching historical weather from backend API', { hours, apiUrl });
+      // Add preventAutoFetch parameter if requested
+      if (options.preventAutoFetch) {
+        apiUrl += '&preventAutoFetch=true';
+      }
+
+      console.log('🕰️ Fetching historical weather from backend API', { hours, apiUrl, options });
 
       const response = await fetch(apiUrl);
       if (!response.ok) {
