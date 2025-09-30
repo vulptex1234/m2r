@@ -4,6 +4,9 @@
 
 このガイドでは、Firebase Functions から完全クライアントサイド処理への移行と、新しいシステムのデプロイ手順を説明します。
 
+> **現在の運用について**
+> 本プロジェクトでは Render Web Service / Cron Job / Postgres へ移行済みです。Firebase 関連の手順は過去の構成を参照するために残しています。最新の Render 向け手順は `RENDER_DEPLOYMENT_GUIDE.md` を参照してください。
+
 ## 🎯 移行のメリット
 
 - **コスト削減**: Functions呼び出し 100% 削減

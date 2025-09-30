@@ -182,7 +182,7 @@ export class RealtimeProcessor {
         forecastC
       );
 
-      // Save results in batch (single Firestore write)
+      // Save results in batch via backend API
       await firestoreService.saveMeasurementBatch(processingResult);
 
       // Update metrics
@@ -199,6 +199,14 @@ export class RealtimeProcessor {
 
       // Emit processing result for UI updates
       this.emitProcessingResult(processingResult);
+
+      if (rawMeasurement.id) {
+        try {
+          await firestoreService.deleteRawMeasurement(rawMeasurement.id);
+        } catch (cleanupError) {
+          AnalyticsLogger.error('Failed to delete raw measurement', cleanupError);
+        }
+      }
 
     } catch (error) {
       this.errorCount++;
@@ -366,7 +374,7 @@ export class RealtimeProcessor {
       clearInterval(this.cleanupInterval);
     }
 
-    // Cleanup Firestore listeners
+    // Cleanup backend polling listeners
     firestoreService.cleanup();
 
     AnalyticsLogger.log('✅ Real-time processor shutdown complete');

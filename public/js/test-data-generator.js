@@ -133,7 +133,7 @@ export class TestDataGenerator {
 
     console.log(`📡 Generating test measurement: ${nodeId} = ${temperature.toFixed(1)}°C`);
 
-    // Add to rawMeasurements collection (this will trigger processing)
+    // Send to backend raw measurements endpoint (triggers processing)
     await firestoreService.addRawMeasurement(measurementData);
 
     return measurementData;
@@ -202,7 +202,7 @@ export class TestDataGenerator {
 
       measurements.push(measurement);
 
-      // Add small delay to avoid overwhelming Firestore
+      // Add small delay to avoid overwhelming backend
       if (i % 10 === 0) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -300,7 +300,7 @@ export class TestDataGenerator {
       // Note: This would require admin privileges or Cloud Functions
       // For now, we'll just log the intention
       console.log('⚠️ Test data cleanup requires admin privileges');
-      console.log('💡 Use Firestore console or run cleanup manually');
+      console.log('💡 Use backend API or dashboard cleanup to remove test data');
 
       // In a real implementation, you might call a Cloud Function
       // or use the Firebase Admin SDK to clean up test data

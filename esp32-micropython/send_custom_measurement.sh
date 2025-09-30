@@ -11,9 +11,10 @@ Usage Examples:
 """
 
 # Default configuration
-DEFAULT_API_URL="https://m2r.onrender.com/api/measurements"
+DEFAULT_API_URL="https://m2r.onrender.com/api/raw-measurements"
 DEFAULT_DEVICE_ID="ESP32-CUSTOM-TEST"
 DEFAULT_HUMIDITY="60.0"
+DEFAULT_DASHBOARD_URL="https://m2r-frontend.onrender.com"
 
 # Function to show usage
 show_usage() {
@@ -227,7 +228,8 @@ verify_sent_data() {
     local device_id="$2"
     local verbose="$3"
 
-    local query_url="${api_url%/measurements}/measurements?limit=10"
+    local base_url="${api_url%/*}"
+    local query_url="${base_url}/processed-measurements?limit=10"
 
     if [[ "$verbose" == "true" ]]; then
         log "🔍 Verifying data at: $query_url"
@@ -240,14 +242,14 @@ verify_sent_data() {
         # Check if our device has recent data
         local found
         found=$(echo "$response" | jq -r --arg device "$device_id" \
-            '.data[] | select(.deviceId == $device) | .deviceId' | head -1)
+            '.data[] | select(.nodeId == $device or .deviceId == $device) | .nodeId' | head -1)
 
         if [[ -n "$found" ]]; then
             log "✅ VERIFIED: Data found for device $device_id"
             if [[ "$verbose" == "true" ]]; then
                 echo "$response" | jq -r --arg device "$device_id" \
-                    '.data[] | select(.deviceId == $device) |
-                     "   Temperature: \(.temperature)°C, Humidity: \(.humidity)%, Created: \(.createdAt)"' | head -3
+                    '.data[] | select(.nodeId == $device or .deviceId == $device) |
+                     "   Observed: \(.observedC // .temperature)°C, Forecast: \(.forecastC // "--")°C, Recorded: \(.recordedAt // .createdAt)"' | head -3
             fi
             return 0
         else
@@ -375,7 +377,7 @@ main() {
         # Show dashboard link
         log ""
         log "🎉 Check the dashboard to see your data:"
-        log "   https://m2-r-24f40.web.app"
+        log "   ${DEFAULT_DASHBOARD_URL}"
         log "   Look for device: $DEVICE_ID"
 
         exit 0

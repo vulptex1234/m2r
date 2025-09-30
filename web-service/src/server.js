@@ -8,7 +8,24 @@ const {
   calculateDailyStats
 } = require('../../shared/historical-weather');
 const { initSchema, getPool } = require('../../shared/db');
-const { upsertHistoricalDay, insertDeviceMeasurement, getRecentDeviceMeasurements, deleteAllMeasurements, deleteAllHistoricalWeather, deleteAllData } = require('../../shared/persistence');
+const {
+  upsertHistoricalDay,
+  insertDeviceMeasurement,
+  getRecentDeviceMeasurements,
+  saveProcessedMeasurementBatch,
+  getRecentProcessedMeasurements,
+  getControlState,
+  insertRawMeasurement,
+  getRawMeasurements,
+  deleteRawMeasurementById,
+  saveForecastSnapshot,
+  getLatestForecastSnapshot,
+  cleanupOldProcessedMeasurements,
+  getSystemHealthSnapshot,
+  deleteAllMeasurements,
+  deleteAllHistoricalWeather,
+  deleteAllData
+} = require('../../shared/persistence');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 3000;
@@ -206,6 +223,168 @@ app.post('/api/measurements', async (req, res) => {
   }
 });
 
+app.get('/api/processed-measurements', async (req, res) => {
+  try {
+    await startup;
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 50));
+    const nodeId = req.query.nodeId || null;
+    const data = await getRecentProcessedMeasurements({ limit, nodeId });
+    res.set('Cache-Control', 'no-cache');
+    return res.json({ data });
+  } catch (error) {
+    console.error('[processed-measurements:list] failed', error);
+    return res.status(500).json({
+      error: 'Failed to fetch processed measurements',
+      message: error.message
+    });
+  }
+});
+
+app.post('/api/processed-measurements', async (req, res) => {
+  try {
+    await startup;
+    const result = req.body || {};
+    if (!result.nodeId) {
+      return res.status(400).json({ error: 'nodeId is required' });
+    }
+
+    await saveProcessedMeasurementBatch(result);
+    return res.status(201).json({ status: 'ok' });
+  } catch (error) {
+    console.error('[processed-measurements] failed', error);
+    return res.status(500).json({
+      error: 'Failed to store processed measurement',
+      message: error.message
+    });
+  }
+});
+
+app.post('/api/processed-measurements/cleanup', async (req, res) => {
+  try {
+    await startup;
+    const days = Number(req.body?.days || 30);
+    const deleted = await cleanupOldProcessedMeasurements(days);
+    return res.json({ deleted });
+  } catch (error) {
+    console.error('[processed-measurements:cleanup] failed', error);
+    return res.status(500).json({
+      error: 'Failed to cleanup measurements',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/control-states/:nodeId', async (req, res) => {
+  try {
+    await startup;
+    const state = await getControlState(req.params.nodeId);
+    if (!state) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+    return res.json(state);
+  } catch (error) {
+    console.error('[control-states:get] failed', error);
+    return res.status(500).json({
+      error: 'Failed to fetch control state',
+      message: error.message
+    });
+  }
+});
+
+app.post('/api/raw-measurements', async (req, res) => {
+  try {
+    await startup;
+    await insertRawMeasurement(req.body || {});
+    return res.status(201).json({ status: 'ok' });
+  } catch (error) {
+    console.error('[raw-measurements:insert] failed', error);
+    return res.status(500).json({
+      error: 'Failed to store raw measurement',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/raw-measurements', async (req, res) => {
+  try {
+    await startup;
+    const { since, limit } = req.query;
+    const data = await getRawMeasurements({ since, limit });
+    res.set('Cache-Control', 'no-cache');
+    return res.json({ data });
+  } catch (error) {
+    console.error('[raw-measurements:list] failed', error);
+    return res.status(500).json({
+      error: 'Failed to fetch raw measurements',
+      message: error.message
+    });
+  }
+});
+
+app.delete('/api/raw-measurements/:id', async (req, res) => {
+  try {
+    await startup;
+    const deleted = await deleteRawMeasurementById(req.params.id);
+    return res.json({ deleted });
+  } catch (error) {
+    console.error('[raw-measurements:delete] failed', error);
+    return res.status(500).json({
+      error: 'Failed to delete raw measurement',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/system-health', async (_req, res) => {
+  try {
+    await startup;
+    const snapshot = await getSystemHealthSnapshot();
+    return res.json(snapshot);
+  } catch (error) {
+    console.error('[system-health] failed', error);
+    return res.status(500).json({
+      error: 'Failed to fetch system health',
+      message: error.message
+    });
+  }
+});
+
+app.post('/api/forecast/snapshot', async (req, res) => {
+  try {
+    await startup;
+    const snapshot = req.body;
+    if (!snapshot) {
+      return res.status(400).json({ error: 'snapshot payload is required' });
+    }
+
+    await saveForecastSnapshot({ ...snapshot, fetchedAt: snapshot.fetchedAt || new Date().toISOString() });
+    return res.status(201).json({ status: 'ok' });
+  } catch (error) {
+    console.error('[forecast:snapshot/save] failed', error);
+    return res.status(500).json({
+      error: 'Failed to store forecast snapshot',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/forecast/snapshot', async (_req, res) => {
+  try {
+    await startup;
+    const snapshot = await getLatestForecastSnapshot();
+    if (!snapshot) {
+      return res.json({ forecastC: null });
+    }
+    return res.json(snapshot);
+  } catch (error) {
+    console.error('[forecast:snapshot] failed', error);
+    return res.status(500).json({
+      error: 'Failed to fetch forecast snapshot',
+      message: error.message
+    });
+  }
+});
+
 // DELETE endpoints for data cleanup
 app.delete('/api/measurements', async (req, res) => {
   try {
@@ -266,14 +445,6 @@ app.delete('/api/all-data', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Historical weather API listening on port ${PORT}`);
-
-  // Test axios loading at startup
-  try {
-    const testAxios = require('axios');
-    console.log('✅ axios available in server context:', typeof testAxios?.get);
-  } catch (error) {
-    console.error('❌ axios not available in server context:', error.message);
-  }
 });
 
 async function getHourlyFromDb(pool, dateString) {

@@ -1,32 +1,9 @@
-// Firebase Configuration and Initialization
-// Using global Firebase compat SDK
+// Application configuration (formerly Firebase config)
 
-// Wait for Firebase to be loaded
-const waitForFirebase = () => {
-  return new Promise((resolve) => {
-    const checkFirebase = () => {
-      if (window.firebase && window.firestoreDb) {
-        resolve();
-      } else {
-        setTimeout(checkFirebase, 50);
-      }
-    };
-    checkFirebase();
-  });
-};
+export const app = null; // Firebase app placeholder (not used)
+export const db = null;  // Firestore placeholder (not used)
+export const analytics = null;
 
-// Initialize and export Firebase instances
-await waitForFirebase();
-
-export const app = window.firebaseApp;
-export const db = window.firestoreDb;
-
-// Only enable analytics in production or custom domain
-export const analytics = (location.hostname === 'localhost' || location.hostname.includes('.web.app'))
-  ? null
-  : window.firebaseAnalytics;
-
-// Global configuration derived from functions config
 export const appConfig = {
   control: {
     alpha: 0.3,
@@ -41,27 +18,30 @@ export const appConfig = {
   },
   weather: {
     apiKey: 'f7be1420d2ab6102535b464beee86321',
-    lat: 35.656, // Tokyo coordinates
+    lat: 35.656,
     lon: 139.324,
     units: 'metric',
   },
   api: {
-    // Backend API endpoints
     baseUrl: 'https://m2r.onrender.com',
     endpoints: {
       historical: '/api/historical',
-      measurements: '/api/measurements'
+      measurements: '/api/measurements',            // ESP32 actual readings
+      processedMeasurements: '/api/processed-measurements',
+      controlStates: '/api/control-states',
+      rawMeasurements: '/api/raw-measurements',
+      systemHealth: '/api/system-health',
+      forecastSnapshot: '/api/forecast/snapshot'
     }
   },
   ui: {
-    refreshInterval: 30000, // 30 seconds
+    refreshInterval: 30000,
     chartMaxPoints: 100,
     enableDebugLogs: location.hostname === 'localhost',
   },
 };
 
-console.log('🔥 Firebase initialized:', {
-  projectId: app.options.projectId,
-  region: 'asia-northeast1',
+console.log('🔥 App configuration loaded:', {
+  apiBase: appConfig.api.baseUrl,
   environment: location.hostname === 'localhost' ? 'development' : 'production'
 });

@@ -14,7 +14,7 @@ class DashboardController {
     this.nodeStates = new Map();
 
     // Separate data sources for proper management
-    this.firestoreMeasurements = []; // Firestore processed data (observed + forecast)
+    this.processedMeasurements = []; // Processed measurement data from backend
     this.deviceMeasurements = []; // ESP32 raw measurements (observed only)
     this.historicalWeather = []; // OpenWeatherMap historical data
 
@@ -205,7 +205,7 @@ class DashboardController {
   }
 
   /**
-   * Initialize measurements chart (ESP32 & Firestore data)
+   * Initialize measurements chart (ESP32 & processed data)
    */
   initializeMeasurementsChart() {
     const ctx = document.getElementById('measurements-chart')?.getContext('2d');
@@ -228,7 +228,7 @@ class DashboardController {
             pointRadius: 3
           },
           {
-            label: '実測温度 (Firestore)',
+            label: '実測温度 (Processed)',
             data: [],
             borderColor: '#4CAF50',
             backgroundColor: 'rgba(76, 175, 80, 0.1)',
@@ -624,11 +624,13 @@ class DashboardController {
         weatherService.getFullForecastData()
       ]);
 
-      // Store Firestore data separately from device data
-      this.firestoreMeasurements = measurements;
-      this.lastMeasurements = [...measurements]; // Keep for compatibility
+      const normalizedMeasurements = Array.isArray(measurements) ? measurements : [];
 
-      console.log('🔥 Firestore measurements sample (expected to be empty):', measurements.length);
+      // Store processed measurements from backend
+      this.processedMeasurements = [...normalizedMeasurements];
+      this.lastMeasurements = [...normalizedMeasurements];
+
+      console.log('📥 Loaded processed measurements:', normalizedMeasurements.length);
 
       // Load historical weather data (extended to 12 hours for better coverage)
       let historicalWeather = [];
@@ -664,7 +666,7 @@ class DashboardController {
       await this.updateChartWithAllSources();
 
       // Update data table
-      this.updateDataTable(measurements.slice(0, 20));
+      this.updateDataTable(normalizedMeasurements.slice(0, 20));
 
       // Load device measurements (ESP32 actual readings)
       await this.fetchDeviceMeasurements(20, { silent: true });
@@ -707,6 +709,11 @@ class DashboardController {
     this.lastMeasurements.unshift(result);
     if (this.lastMeasurements.length > 200) {
       this.lastMeasurements = this.lastMeasurements.slice(0, 100);
+    }
+
+    this.processedMeasurements.unshift(result);
+    if (this.processedMeasurements.length > 200) {
+      this.processedMeasurements = this.processedMeasurements.slice(0, 200);
     }
 
     this.lastUpdateTime = new Date();
@@ -940,7 +947,7 @@ class DashboardController {
   }
 
   /**
-   * Update measurements chart with ESP32 and Firestore data
+   * Update measurements chart with ESP32 and processed data
    */
   updateMeasurementsChart(measurements) {
     if (!this.measurementsChart) return;
@@ -956,31 +963,31 @@ class DashboardController {
 
     const pastCutoff = now.getTime() - timeframes[this.chartTimeframe];
 
-    // Process Firestore measurement data
-    const filteredFirestoreMeasurements = measurements.filter(m => {
-      const time = m.recordedAt?.toDate ? m.recordedAt.toDate().getTime() : Date.parse(m.measuredAt);
+    // Process processed measurement data
+    const filteredProcessedMeasurements = (measurements || []).filter(m => {
+      const time = this.parseTimestamp(m.recordedAt || m.measuredAt || m.timestamp).getTime();
       return time >= pastCutoff;
     }).sort((a, b) => {
-      const timeA = a.recordedAt?.toDate ? a.recordedAt.toDate().getTime() : Date.parse(a.measuredAt);
-      const timeB = b.recordedAt?.toDate ? b.recordedAt.toDate().getTime() : Date.parse(b.measuredAt);
+      const timeA = this.parseTimestamp(a.recordedAt || a.measuredAt || a.timestamp).getTime();
+      const timeB = this.parseTimestamp(b.recordedAt || b.measuredAt || b.timestamp).getTime();
       return timeA - timeB;
     });
 
     // Process device measurement data (ESP32)
     const filteredDeviceMeasurements = this.deviceMeasurements.filter(m => {
-      const time = new Date(m.measuredAt || m.timestamp).getTime();
+      const time = this.parseTimestamp(m.measuredAt || m.timestamp).getTime();
       return time >= pastCutoff && time <= now.getTime();
     }).sort((a, b) => {
-      const timeA = new Date(a.measuredAt || a.timestamp).getTime();
-      const timeB = new Date(b.measuredAt || b.timestamp).getTime();
+      const timeA = this.parseTimestamp(a.measuredAt || a.timestamp).getTime();
+      const timeB = this.parseTimestamp(b.measuredAt || b.timestamp).getTime();
       return timeA - timeB;
     });
 
     // Combine all measurements for timeline
-    const allMeasurements = [...filteredFirestoreMeasurements, ...filteredDeviceMeasurements]
+    const allMeasurements = [...filteredProcessedMeasurements, ...filteredDeviceMeasurements]
       .sort((a, b) => {
-        const timeA = a.recordedAt?.toDate ? a.recordedAt.toDate().getTime() : new Date(a.measuredAt || a.timestamp).getTime();
-        const timeB = b.recordedAt?.toDate ? b.recordedAt.toDate().getTime() : new Date(b.measuredAt || b.timestamp).getTime();
+        const timeA = this.parseTimestamp(a.recordedAt || a.measuredAt || a.timestamp).getTime();
+        const timeB = this.parseTimestamp(b.recordedAt || b.measuredAt || b.timestamp).getTime();
         return timeA - timeB;
       });
 
@@ -989,7 +996,7 @@ class DashboardController {
     const firestoreData = [];
 
     allMeasurements.forEach(m => {
-      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt || m.timestamp);
+      const time = this.parseTimestamp(m.recordedAt || m.measuredAt || m.timestamp);
       const dataPoint = {
         x: time,
         y: m.observedC
@@ -1032,18 +1039,18 @@ class DashboardController {
 
     const pastCutoff = now.getTime() - timeframes[this.chartTimeframe];
 
-    const filteredHistoricalWeather = historicalWeather.filter(item => {
-      const timestamp = item.timestamp || item.dateTime?.getTime();
+    const filteredHistoricalWeather = (historicalWeather || []).filter(item => {
+      const timestamp = this.parseTimestamp(item.timestamp || item.dateTime).getTime();
       return timestamp >= pastCutoff && timestamp <= (now.getTime() + 30 * 60 * 1000);
     }).sort((a, b) => {
-      const timeA = a.timestamp || a.dateTime?.getTime();
-      const timeB = b.timestamp || b.dateTime?.getTime();
+      const timeA = this.parseTimestamp(a.timestamp || a.dateTime).getTime();
+      const timeB = this.parseTimestamp(b.timestamp || b.dateTime).getTime();
       return timeA - timeB;
     });
 
     // Process data for time-scale chart (x-y coordinates)
     const historicalDataPoints = filteredHistoricalWeather.map(item => {
-      const time = item.dateTime || new Date(item.timestamp);
+      const time = this.parseTimestamp(item.dateTime || item.timestamp);
       // Normalize to exact hour (00 minutes) to match database format
       const normalizedTime = new Date(time);
       normalizedTime.setMinutes(0, 0, 0);
@@ -1078,29 +1085,13 @@ class DashboardController {
 
     // Process all forecast timeline data (including historical predictions)
     const processTimelineData = (timeline) => {
-      return timeline.map(item => {
-        const timestamp = item.timestamp?.toDate ? item.timestamp.toDate().getTime() :
-                         (item.timestamp instanceof Date ? item.timestamp.getTime() :
-                          (item.timestamp || new Date(item.dateTime).getTime()));
-
-        // Debug logging for timezone issues
-        if (item.timestamp?.toDate) {
-          const firestoreDate = item.timestamp.toDate();
-          console.log('🔍 Firestore timestamp debug:', {
-            original: item.timestamp,
-            toDate: firestoreDate,
-            toDateString: firestoreDate.toString(),
-            toISOString: firestoreDate.toISOString(),
-            toLocaleString: firestoreDate.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }),
-            getTime: firestoreDate.getTime(),
-            temperature: item.temperature
-          });
-        }
+      return (timeline || []).map(item => {
+        const timestamp = this.parseTimestamp(item.timestamp || item.dateTime).getTime();
 
         return {
           x: new Date(timestamp),
           y: item.temperature,
-          timestamp: timestamp,
+          timestamp,
           description: item.description || '',
           icon: item.icon || ''
         };
@@ -1167,7 +1158,7 @@ class DashboardController {
    */
   async updateChartWithAllSources() {
     console.log('🔄 Updating chart with all data sources:', {
-      firestorePoints: this.firestoreMeasurements.length,
+      processedPoints: this.processedMeasurements.length,
       devicePoints: this.deviceMeasurements.length,
       historicalPoints: this.historicalWeather.length
     });
@@ -1180,14 +1171,14 @@ class DashboardController {
       });
 
       // Update chart with all three data sources
-      this.updateChart(this.firestoreMeasurements, fullForecastData, this.historicalWeather);
+      this.updateChart(this.processedMeasurements, fullForecastData, this.historicalWeather);
 
       console.log('✅ Chart updated successfully with all data sources');
 
     } catch (error) {
       console.error('❌ Failed to update chart with all sources:', error);
       // Fallback: update with available data
-      this.updateChart(this.firestoreMeasurements, null, this.historicalWeather);
+      this.updateChart(this.processedMeasurements, null, this.historicalWeather);
     }
   }
 
@@ -1241,7 +1232,7 @@ class DashboardController {
     } catch (error) {
       console.warn('Failed to refresh forecast for chart:', error);
       // Fallback to basic update with available data
-      this.updateChart(this.firestoreMeasurements, null, this.historicalWeather);
+      this.updateChart(this.processedMeasurements, null, this.historicalWeather);
     }
   }
 
@@ -1263,7 +1254,7 @@ class DashboardController {
     }
 
     const rows = measurements.map(m => {
-      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt);
+      const time = this.parseTimestamp(m.recordedAt || m.measuredAt || m.timestamp);
       const rateClass = {
         [RateLevel.LOW]: 'bg-green-100 text-green-800',
         [RateLevel.MEDIUM]: 'bg-yellow-100 text-yellow-800',
@@ -1314,7 +1305,7 @@ class DashboardController {
       noDataRow.parentElement.remove();
     }
 
-    const time = new Date(result.measuredAt || result.timestamp);
+    const time = this.parseTimestamp(result.measuredAt || result.timestamp);
     const rateClass = {
       [RateLevel.LOW]: 'bg-green-100 text-green-800',
       [RateLevel.MEDIUM]: 'bg-yellow-100 text-yellow-800',
@@ -1531,7 +1522,7 @@ class DashboardController {
     ];
 
     this.lastMeasurements.forEach(m => {
-      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt);
+      const time = this.parseTimestamp(m.recordedAt || m.measuredAt || m.timestamp);
       csvData.push([
         this.formatDateTime(time),
         m.nodeId,
@@ -1734,6 +1725,23 @@ class DashboardController {
           hour: '2-digit'
         });
     }
+  }
+
+  /**
+   * Parse various timestamp formats into Date
+   */
+  parseTimestamp(value) {
+    if (!value) {
+      return new Date();
+    }
+    if (value instanceof Date) {
+      return value;
+    }
+    if (typeof value === 'object' && typeof value.toDate === 'function') {
+      return value.toDate();
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? new Date() : date;
   }
 
   /**
@@ -2080,13 +2088,13 @@ class DashboardController {
       // Clear all data from dashboard
       this.deviceMeasurements = [];
       this.historicalWeather = [];
-      this.firestoreMeasurements = [];
+      this.processedMeasurements = [];
       this.lastMeasurements = [];
 
       // Update chart
       await this.updateChartWithAllSources();
 
-      this.showAlert('success', `全データを削除しました (${result.result.total}件)`, 4000);
+      this.showAlert('success', `全データを削除しました (${result.total ?? 0}件)`, 4000);
 
     } catch (error) {
       console.error('❌ Failed to delete all data:', error);

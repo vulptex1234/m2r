@@ -9,15 +9,15 @@
 | **Web Service** (`web-service/`) | Render Web Service | OpenWeather からの過去データ取得 API、Postgres キャッシュ層 | `shared/historical-weather.js`, `shared/db.js`, `shared/persistence.js`, Render Postgres |
 | **Cron Job** (`cron-job/`) | Render Cron Job | 日次で過去データを一括取得し Postgres に保管、JSON 出力 | `shared/historical-weather.js`, `shared/persistence.js`, Render Postgres |
 | **Postgres** | Render PostgreSQL | 過去の天気データ・日次サマリー・デバイス実測値 (`device_measurements`) の保存先 | なし（他コンポーネントから参照） |
-| **Firebase Functions** (`functions/`) | Firebase (必要に応じて) | 既存の天気予測書き込み処理 | Firebase プロジェクト |
-| **フロントエンド** (`public/`) | Firebase Hosting など既存環境 | Dashboard UI／IoT 連携 | Render Web Service API, Firebase |
+| **Backend Functions (legacy)** (`functions/`) | *Optional* | 旧 Firestore 連携のためのコード（現在は未使用） | - |
+| **フロントエンド** (`public/`) | Render Static Site | Dashboard UI／IoT 連携 | Render Web Service API |
 
 ## データフロー
 
 1. ブラウザのダッシュボードは Render Web Service に対して `GET /api/historical` を発行し、直近数時間または指定日の過去天気データを取得します。
 2. Web Service は先に Render Postgres を参照し、データがなければ OpenWeather API (`onecall/timemachine`) へ問い合わせ、結果を Postgres に保存してからレスポンスを返します。
 3. Render Cron Job はスケジュールに従って `cron-job/src/fetch-historical-weather.js` を実行し、OpenWeather から 24 時間分のデータを取得、JSON 出力と同時に Postgres に保存します。これにより Web Service が参照するキャッシュが事前に更新されます。
-4. Firebase Functions (`functions/`) は既存の構成どおり OpenWeather の 5 日予報を Firestore に保存しており、フロントエンドから参照されます。必要に応じて Render 側の API と併用します。
+4. フロントエンドは Render Web Service API 経由で Postgres に保存されたすべてのデータ（実測値・処理済みデータ・予測値）を参照します。Firebase/Firestore との接続は廃止されています。
 
 ## 環境変数
 
@@ -61,9 +61,6 @@
 
 [Render Cron Job] --SQL--> [Render Postgres]
                   └--HTTP--> [OpenWeather API]
-
-[Firebase Functions] --HTTP--> [OpenWeather API]
-                    └--Firestore--> [Firebase]
 ```
 
 Web Service と Cron Job は `shared/` ディレクトリ内のモジュールを共有し、`axios` や `pg` などの依存は各ディレクトリ内でインストールしたものを `shared` モジュールが自動的に解決します。

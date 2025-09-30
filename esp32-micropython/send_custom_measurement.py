@@ -18,7 +18,8 @@ from datetime import datetime, timedelta
 import re
 
 # Default configuration
-DEFAULT_API_URL = "https://m2r.onrender.com/api/measurements"
+DEFAULT_API_URL = "https://m2r.onrender.com/api/raw-measurements"
+DEFAULT_DASHBOARD_URL = "https://m2r-frontend.onrender.com"
 DEFAULT_DEVICE_ID = "ESP32-CUSTOM-TEST"
 DEFAULT_HUMIDITY = 60.0
 
@@ -190,8 +191,8 @@ def send_measurement(api_url, payload, verbose=False):
 def verify_sent_data(api_url, device_id, sent_time, verbose=False):
     """Verify that the data was successfully stored"""
     try:
-        # Replace measurements endpoint with query endpoint
-        query_url = api_url.replace('/measurements', '/measurements?limit=10')
+        base_url = api_url.rsplit('/', 1)[0]
+        query_url = f"{base_url}/processed-measurements?limit=10"
 
         if verbose:
             print(f"🔍 Verifying data at: {query_url}")
@@ -204,20 +205,21 @@ def verify_sent_data(api_url, device_id, sent_time, verbose=False):
 
             # Look for our measurement
             for measurement in measurements:
-                if (measurement.get('deviceId') == device_id and
-                    measurement.get('temperature') is not None):
+                node_id = measurement.get('nodeId') or measurement.get('deviceId')
+                observed = measurement.get('observedC') or measurement.get('temperature')
+                if node_id == device_id and observed is not None:
 
                     # Check if timestamp is close to our sent time (within 1 minute)
-                    created_at = measurement.get('createdAt', '')
+                    created_at = measurement.get('recordedAt') or measurement.get('createdAt') or ''
                     if created_at:
                         try:
                             created_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
                             time_diff = abs((created_time - sent_time).total_seconds())
                             if time_diff < 60:  # Within 1 minute
                                 print(f"✅ VERIFIED: Data found in database")
-                                print(f"   Device ID: {measurement['deviceId']}")
-                                print(f"   Temperature: {measurement['temperature']}°C")
-                                print(f"   Humidity: {measurement.get('humidity', 'N/A')}%")
+                                print(f"   Device ID: {node_id}")
+                                print(f"   Observed: {observed}°C")
+                                print(f"   Forecast: {measurement.get('forecastC', 'N/A')}°C")
                                 print(f"   Created at: {created_at}")
                                 return True
                         except:
@@ -226,9 +228,11 @@ def verify_sent_data(api_url, device_id, sent_time, verbose=False):
             print("⚠️ WARNING: Sent measurement not found in recent data")
             if verbose:
                 print(f"   Recent measurements from {device_id}:")
-                device_measurements = [m for m in measurements if m.get('deviceId') == device_id]
+                device_measurements = [m for m in measurements if (m.get('nodeId') or m.get('deviceId')) == device_id]
                 for m in device_measurements[:3]:
-                    print(f"     - {m.get('temperature')}°C at {m.get('createdAt')}")
+                    observed = m.get('observedC') or m.get('temperature')
+                    created_at = m.get('recordedAt') or m.get('createdAt')
+                    print(f"     - {observed}°C at {created_at}")
             return False
         else:
             print(f"⚠️ WARNING: Cannot verify data (HTTP {response.status_code})")
@@ -340,7 +344,7 @@ Usage Examples:
         if success:
             print()
             print("🎉 Check the dashboard to see your data:")
-            print("   https://m2-r-24f40.web.app")
+            print(f"   {DEFAULT_DASHBOARD_URL}")
             print(f"   Look for device: {args.device}")
 
         sys.exit(0 if success else 1)

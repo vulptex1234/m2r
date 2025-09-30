@@ -247,55 +247,58 @@ export class WeatherService {
   }
 
   /**
-   * Cache forecast data to Firestore for system use
+   * Cache forecast data to backend for system use
    * @param {Array} forecastData - Forecast data array
    * @returns {Promise<void>}
    */
-  async cacheForecastToFirestore(forecastData = null) {
+  async cacheForecastSnapshot(forecastData = null) {
     try {
       if (!forecastData) {
         forecastData = await this.getForecast();
       }
 
-      // Save to Firestore with timestamp
+      // Save to backend with timestamp
       await firestoreService.saveForecastCache({
         forecastC: forecastData[0]?.temperature || null,
-        forecastTime: forecastData[0]?.dateTime || new Date(),
+        forecastTime: (forecastData[0]?.dateTime instanceof Date)
+          ? forecastData[0].dateTime.toISOString()
+          : new Date().toISOString(),
         provider: 'openweathermap',
         fullForecast: forecastData.slice(0, 24), // First 24 points (3 days)
-        fetchedAt: new Date()
+        fetchedAt: new Date().toISOString()
       });
 
-      console.log('💾 Forecast cached to Firestore:', {
+      console.log('💾 Forecast cached to backend:', {
         currentTemp: forecastData[0]?.temperature,
         totalPoints: forecastData.length
       });
 
     } catch (error) {
-      console.error('❌ Failed to cache forecast to Firestore:', error);
+      console.error('❌ Failed to cache forecast to backend:', error);
       throw error;
     }
   }
 
   /**
-   * Get cached forecast from Firestore with fallback to API
+   * Get cached forecast from backend with fallback to API
    * @returns {Promise<Object>} Forecast data with full timeline
    */
   async getFullForecastData() {
     try {
-      // Try to get from Firestore first
+      // Try to get from backend cache first
       const cachedForecast = await firestoreService.getLatestForecast();
 
-      if (cachedForecast.fullForecast && cachedForecast.fetchedAt) {
-        const cacheAge = Date.now() - cachedForecast.fetchedAt.toDate().getTime();
+      if (cachedForecast?.fullForecast && cachedForecast.fetchedAt) {
+        const fetchedAt = new Date(cachedForecast.fetchedAt);
+        const cacheAge = Number.isNaN(fetchedAt.getTime()) ? Infinity : Date.now() - fetchedAt.getTime();
 
         // Use cached data if less than 30 minutes old
         if (cacheAge < this.cacheDuration) {
-          console.log('📊 Using cached forecast from Firestore');
+          console.log('📊 Using cached forecast from backend');
           return {
             current: cachedForecast.forecastC,
             timeline: cachedForecast.fullForecast,
-            fetchedAt: cachedForecast.fetchedAt.toDate()
+            fetchedAt: fetchedAt
           };
         }
       }
@@ -304,8 +307,8 @@ export class WeatherService {
       console.log('🔄 Fetching fresh forecast data...');
       const forecastData = await this.getForecast();
 
-      // Cache to Firestore
-      await this.cacheForecastToFirestore(forecastData);
+      // Cache to backend
+      await this.cacheForecastSnapshot(forecastData);
 
       return {
         current: forecastData[0]?.temperature || null,
@@ -319,12 +322,12 @@ export class WeatherService {
       // Fallback to cached data even if old
       try {
         const cachedForecast = await firestoreService.getLatestForecast();
-        if (cachedForecast.fullForecast) {
+        if (cachedForecast?.fullForecast) {
           console.log('⚠️ Using stale cached forecast as fallback');
           return {
             current: cachedForecast.forecastC,
             timeline: cachedForecast.fullForecast,
-            fetchedAt: cachedForecast.fetchedAt?.toDate() || new Date()
+            fetchedAt: cachedForecast.fetchedAt ? new Date(cachedForecast.fetchedAt) : new Date()
           };
         }
       } catch (fallbackError) {
@@ -394,7 +397,7 @@ export const weatherService = new WeatherService();
 setInterval(async () => {
   try {
     console.log('🔄 Auto-refreshing weather forecast...');
-    await weatherService.cacheForecastToFirestore();
+    await weatherService.cacheForecastSnapshot();
   } catch (error) {
     console.warn('⚠️ Auto-refresh failed:', error);
   }

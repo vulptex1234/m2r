@@ -13,47 +13,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 
-  <!-- Firebase SDK v9+ CDN -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics-compat.js"></script>
-
-  <script>
-    // Initialize Firebase using compat SDK
-    const firebaseConfig = {
-      apiKey: 'AIzaSyAwZVmiypeiZEWPepxGbIGeJdZNjX1aez8',
-      authDomain: 'm2-r-24f40.firebaseapp.com',
-      projectId: 'm2-r-24f40',
-      storageBucket: 'm2-r-24f40.firebasestorage.app',
-      messagingSenderId: '359762509592',
-      appId: '1:359762509592:web:22a8332d31ac5af9dea86d',
-      measurementId: 'G-LYW762ZD10'
-    };
-
-    // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // Only initialize analytics for custom domains (not .web.app)
-    let analytics = null;
-    try {
-      if (!location.hostname.includes('.web.app') && location.hostname !== 'localhost') {
-        analytics = firebase.analytics();
-        console.log('📊 Analytics enabled for domain:', location.hostname);
-      } else {
-        console.log('📊 Analytics disabled for development domain');
-      }
-    } catch (error) {
-      console.log('📊 Analytics initialization skipped:', error.message);
-    }
-
-    // Make Firebase available globally
-    window.firebaseApp = app;
-    window.firestoreDb = db;
-    window.firebaseAnalytics = analytics;
-    window.firebase = firebase;
-  </script>
-
   <!-- Custom Tailwind Config -->
   <script>
     tailwind.config = {
@@ -221,7 +180,7 @@
           <div class="flex items-center justify-between mb-6">
             <div>
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white">🌡️ 実測値</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">ESP32デバイス・Firestoreデータ</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">ESP32デバイス・処理済みデータ</p>
             </div>
             <div class="text-sm text-gray-500" id="measurements-status">
               <!-- Status info -->
