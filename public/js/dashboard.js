@@ -293,6 +293,36 @@ class DashboardController {
             size: 12
           },
           color: '#666'
+        },
+        tooltip: {
+          callbacks: {
+            title: (tooltipItems) => {
+              // Get the raw data point
+              const item = tooltipItems[0];
+              if (!item || !item.raw) return '';
+
+              // Use the timestamp from the data point
+              const date = new Date(item.raw.timestamp || item.raw.x);
+
+              // Format in Japan timezone
+              const options = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Tokyo'
+              };
+
+              return date.toLocaleString('ja-JP', options);
+            },
+            label: (context) => {
+              const label = context.dataset.label || '';
+              const value = context.parsed.y;
+              return `${label}: ${value?.toFixed(2) || ''}°C`;
+            }
+          }
         }
       },
       scales: {
@@ -314,13 +344,15 @@ class DashboardController {
           type: 'time',
           time: {
             unit: 'hour',
+            stepSize: 1,
             displayFormats: {
               hour: 'MM/dd HH:00'
             }
           },
           ticks: {
-            maxTicksLimit: 10,
-            autoSkip: true
+            maxTicksLimit: 24,
+            autoSkip: false,
+            source: 'data'
           }
         }
       },
@@ -344,7 +376,7 @@ class DashboardController {
         labels: [],
         datasets: [
           {
-            label: '予測温度 (現在)',
+            label: '予測温度',
             data: [],
             borderColor: '#FF9800',
             backgroundColor: 'rgba(255, 152, 0, 0.1)',
@@ -393,6 +425,41 @@ class DashboardController {
             size: 12
           },
           color: '#666'
+        },
+        tooltip: {
+          callbacks: {
+            title: (tooltipItems) => {
+              // Get the first tooltip item
+              const item = tooltipItems[0];
+              if (!item) return '';
+
+              // For time scale charts, use the parsed x value
+              // For regular charts, use the label
+              let date;
+              if (item.raw && (item.raw.x || item.raw.timestamp)) {
+                // Time scale with {x, y} format
+                date = new Date(item.raw.timestamp || item.raw.x);
+              } else if (item.label) {
+                // Regular chart with label
+                return item.label;
+              } else {
+                return '';
+              }
+
+              // Format in Japan timezone
+              const options = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Tokyo'
+              };
+
+              return date.toLocaleString('ja-JP', options);
+            }
+          }
         }
       },
       scales: {
@@ -411,8 +478,18 @@ class DashboardController {
             display: true,
             text: '時刻'
           },
+          type: 'time',
+          time: {
+            unit: 'hour',
+            stepSize: 1,
+            displayFormats: {
+              hour: 'MM/dd HH:00'
+            }
+          },
           ticks: {
-            maxTicksLimit: 8
+            maxTicksLimit: 24,
+            autoSkip: false,
+            source: 'data'
           }
         }
       },
@@ -441,6 +518,36 @@ class DashboardController {
             size: 12
           },
           color: '#666'
+        },
+        tooltip: {
+          callbacks: {
+            title: (tooltipItems) => {
+              // Get the raw data point
+              const item = tooltipItems[0];
+              if (!item || !item.raw) return '';
+
+              // Use the timestamp from the data point
+              const date = new Date(item.raw.timestamp || item.raw.x);
+
+              // Format in Japan timezone
+              const options = {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Tokyo'
+              };
+
+              return date.toLocaleString('ja-JP', options);
+            },
+            label: (context) => {
+              const label = context.dataset.label || '';
+              const value = context.parsed.y;
+              return `${label}: ${value?.toFixed(2) || ''}°C`;
+            }
+          }
         },
         zoom: {
           zoom: {
@@ -484,13 +591,15 @@ class DashboardController {
           type: 'time',
           time: {
             unit: 'hour',
+            stepSize: 1,
             displayFormats: {
-              hour: 'MM/dd HH:mm'
+              hour: 'MM/dd HH:00'
             }
           },
           ticks: {
-            maxTicksLimit: 10,
-            autoSkip: true
+            maxTicksLimit: 24,
+            autoSkip: false,
+            source: 'data'
           },
           // Enable horizontal scrolling
           min: undefined, // Will be set dynamically
@@ -875,26 +984,25 @@ class DashboardController {
         return timeA - timeB;
       });
 
-    // Prepare chart data
-    const labels = allMeasurements.map(m => {
-      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt || m.timestamp);
-      return this.formatTimeForChart(time);
-    });
-
+    // Prepare chart data in {x, y} format for time scale
     const esp32Data = [];
     const firestoreData = [];
 
     allMeasurements.forEach(m => {
+      const time = m.recordedAt?.toDate ? m.recordedAt.toDate() : new Date(m.measuredAt || m.timestamp);
+      const dataPoint = {
+        x: time,
+        y: m.observedC
+      };
+
       if (m.mode === 'DEVICE') {
-        esp32Data.push(m.observedC);
-        firestoreData.push(null);
+        esp32Data.push(dataPoint);
       } else {
-        esp32Data.push(null);
-        firestoreData.push(m.observedC);
+        firestoreData.push(dataPoint);
       }
     });
 
-    this.measurementsChart.data.labels = labels;
+    this.measurementsChart.data.labels = [];
     this.measurementsChart.data.datasets[0].data = esp32Data;
     this.measurementsChart.data.datasets[1].data = firestoreData;
     this.measurementsChart.update('none');
@@ -958,17 +1066,10 @@ class DashboardController {
     if (!this.forecastChart) return;
 
     if (!fullForecastData?.timeline || !Array.isArray(fullForecastData.timeline) || fullForecastData.timeline.length === 0) {
-      // Show single current forecast point if available
-      if (fullForecastData?.current !== null) {
-        const now = new Date();
-        this.forecastChart.data.labels = [now];
-        this.forecastChart.data.datasets[0].data = [{ x: now, y: fullForecastData.current }];
-        this.forecastChart.data.datasets[1].data = [];
-      } else {
-        this.forecastChart.data.labels = [];
-        this.forecastChart.data.datasets[0].data = [];
-        this.forecastChart.data.datasets[1].data = [];
-      }
+      // No forecast data available
+      this.forecastChart.data.labels = [];
+      this.forecastChart.data.datasets[0].data = [];
+      this.forecastChart.data.datasets[1].data = [];
       this.forecastChart.update('none');
       return;
     }
@@ -982,6 +1083,20 @@ class DashboardController {
                          (item.timestamp instanceof Date ? item.timestamp.getTime() :
                           (item.timestamp || new Date(item.dateTime).getTime()));
 
+        // Debug logging for timezone issues
+        if (item.timestamp?.toDate) {
+          const firestoreDate = item.timestamp.toDate();
+          console.log('🔍 Firestore timestamp debug:', {
+            original: item.timestamp,
+            toDate: firestoreDate,
+            toDateString: firestoreDate.toString(),
+            toISOString: firestoreDate.toISOString(),
+            toLocaleString: firestoreDate.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }),
+            getTime: firestoreDate.getTime(),
+            temperature: item.temperature
+          });
+        }
+
         return {
           x: new Date(timestamp),
           y: item.temperature,
@@ -994,20 +1109,9 @@ class DashboardController {
 
     const allForecastData = processTimelineData(fullForecastData.timeline);
 
-    // Separate past predictions (historical) from current/future predictions
+    // Separate past predictions (historical) from future predictions
     const pastPredictions = allForecastData.filter(item => item.timestamp < now);
-    const currentAndFuturePredictions = allForecastData.filter(item => item.timestamp >= now);
-
-    // Add current forecast point if available and not already present
-    if (fullForecastData.current !== null && !currentAndFuturePredictions.some(f => Math.abs(f.timestamp - now) < 300000)) {
-      currentAndFuturePredictions.unshift({
-        x: new Date(now),
-        y: fullForecastData.current,
-        timestamp: now,
-        description: 'Current forecast',
-        icon: ''
-      });
-    }
+    const futurePredictions = allForecastData.filter(item => item.timestamp > now);
 
     // Set up fixed 24-hour viewing window with horizontal sliding capability
     const allTimestamps = allForecastData.map(item => item.timestamp);
@@ -1040,7 +1144,7 @@ class DashboardController {
 
     // Update chart data
     this.forecastChart.data.labels = []; // Not needed for time scale
-    this.forecastChart.data.datasets[0].data = currentAndFuturePredictions;
+    this.forecastChart.data.datasets[0].data = futurePredictions;
     this.forecastChart.data.datasets[1].data = pastPredictions;
 
     this.forecastChart.update('none');
@@ -1048,7 +1152,7 @@ class DashboardController {
     console.log('📊 Forecast chart updated with slide functionality:', {
       totalPredictions: allForecastData.length,
       pastPredictions: pastPredictions.length,
-      currentAndFuture: currentAndFuturePredictions.length,
+      futurePredictions: futurePredictions.length,
       slideEnabled: this.forecastChart.options.plugins.zoom.pan.enabled,
       viewWindow: '24 hours (fixed)',
       interaction: 'Drag to slide horizontally through time',
