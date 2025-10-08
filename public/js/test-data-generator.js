@@ -1,6 +1,6 @@
 // Test Data Generator for IoT Temperature Control System
-import { firestoreService } from './firestore-service.js';
-import { appConfig } from './firebase-config.js';
+import { backendService } from './backend-service.js';
+import { appConfig } from './app-config.js';
 
 export class TestDataGenerator {
   constructor() {
@@ -61,7 +61,7 @@ export class TestDataGenerator {
 
     // First, add a forecast if none exists
     try {
-      const forecast = await firestoreService.getLatestForecast();
+      const forecast = await backendService.getLatestForecast();
       if (forecast.forecastC === null) {
         await this.generateForecastData();
       }
@@ -134,7 +134,7 @@ export class TestDataGenerator {
     console.log(`📡 Generating test measurement: ${nodeId} = ${temperature.toFixed(1)}°C`);
 
     // Send to backend raw measurements endpoint (triggers processing)
-    await firestoreService.addRawMeasurement(measurementData);
+    await backendService.addRawMeasurement(measurementData);
 
     return measurementData;
   }
@@ -162,7 +162,7 @@ export class TestDataGenerator {
 
     console.log(`🌤️ Generating test forecast: ${forecastTemp.toFixed(1)}°C`);
 
-    await firestoreService.saveForecastCache(forecastData);
+    await backendService.saveForecastCache(forecastData);
     return forecastData;
   }
 
@@ -214,7 +214,7 @@ export class TestDataGenerator {
       const batch = measurements.slice(i, i + batchSize);
 
       const promises = batch.map(measurement =>
-        firestoreService.addRawMeasurement(measurement)
+        backendService.addRawMeasurement(measurement)
       );
 
       await Promise.all(promises);
@@ -277,7 +277,7 @@ export class TestDataGenerator {
         };
 
         console.log(`⚠️ Generating anomaly: ${anomaly.anomalyType} for ${anomaly.nodeId}`);
-        await firestoreService.addRawMeasurement(measurementData);
+        await backendService.addRawMeasurement(measurementData);
 
         // Delay between anomalies
         await new Promise(resolve => setTimeout(resolve, 1000));

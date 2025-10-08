@@ -1,6 +1,6 @@
-// Backend Data Service (replaces legacy Firestore client)
+// Backend Data Service (Render PostgreSQL API)
 
-import { appConfig } from './firebase-config.js';
+import { appConfig } from './app-config.js';
 
 class BackendDataService {
   constructor() {
@@ -229,8 +229,8 @@ class BackendDataService {
   }
 }
 
-export const firestoreService = new BackendDataService();
+export const backendService = new BackendDataService();
 
 window.addEventListener('beforeunload', () => {
-  firestoreService.cleanup();
+  backendService.cleanup();
 });

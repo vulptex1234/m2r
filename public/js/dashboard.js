@@ -1,8 +1,8 @@
 // Dashboard UI Controller with Tailwind CSS
 import { realtimeProcessor } from './realtime-processor.js';
-import { firestoreService } from './firestore-service.js';
+import { backendService } from './backend-service.js';
 import { weatherService } from './weather-service.js';
-import { appConfig } from './firebase-config.js';
+import { appConfig } from './app-config.js';
 import { RateLevel } from './analytics-engine.js';
 
 class DashboardController {
@@ -620,7 +620,7 @@ class DashboardController {
     try {
       // Load measurements and forecast concurrently
       const [measurements, fullForecastData] = await Promise.all([
-        firestoreService.getRecentMeasurements(null, 100),
+        backendService.getRecentMeasurements(null, 100),
         weatherService.getFullForecastData()
       ]);
 
@@ -1486,7 +1486,7 @@ class DashboardController {
         <span>削除中...</span>
       `;
 
-      const deletedCount = await firestoreService.cleanupOldMeasurements();
+      const deletedCount = await backendService.cleanupOldMeasurements();
 
       if (deletedCount > 0) {
         this.showAlert('success', `${deletedCount}件の古いデータを削除しました`, 3000);
@@ -1557,7 +1557,7 @@ class DashboardController {
     // System health check every 30 seconds
     setInterval(async () => {
       try {
-        const health = await firestoreService.getSystemHealth();
+        const health = await backendService.getSystemHealth();
         this.updateConnectionStatus(health.status === 'healthy');
       } catch (error) {
         console.warn('Health check failed:', error);

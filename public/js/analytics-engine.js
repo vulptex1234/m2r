@@ -1,5 +1,5 @@
 // Statistical Analysis Engine - JavaScript port of Functions logic
-import { appConfig } from './firebase-config.js';
+import { appConfig } from './app-config.js';
 
 export const RateLevel = {
   LOW: "LOW",

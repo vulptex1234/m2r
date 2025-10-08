@@ -1,6 +1,6 @@
 // Weather Service - OpenWeatherMap API Integration
-import { appConfig } from './firebase-config.js';
-import { firestoreService } from './firestore-service.js';
+import { appConfig } from './app-config.js';
+import { backendService } from './backend-service.js';
 
 export class WeatherService {
   constructor() {
@@ -258,7 +258,7 @@ export class WeatherService {
       }
 
       // Save to backend with timestamp
-      await firestoreService.saveForecastCache({
+      await backendService.saveForecastCache({
         forecastC: forecastData[0]?.temperature || null,
         forecastTime: (forecastData[0]?.dateTime instanceof Date)
           ? forecastData[0].dateTime.toISOString()
@@ -286,7 +286,7 @@ export class WeatherService {
   async getFullForecastData() {
     try {
       // Try to get from backend cache first
-      const cachedForecast = await firestoreService.getLatestForecast();
+      const cachedForecast = await backendService.getLatestForecast();
 
       if (cachedForecast?.fullForecast && cachedForecast.fetchedAt) {
         const fetchedAt = new Date(cachedForecast.fetchedAt);
@@ -321,7 +321,7 @@ export class WeatherService {
 
       // Fallback to cached data even if old
       try {
-        const cachedForecast = await firestoreService.getLatestForecast();
+        const cachedForecast = await backendService.getLatestForecast();
         if (cachedForecast?.fullForecast) {
           console.log('⚠️ Using stale cached forecast as fallback');
           return {

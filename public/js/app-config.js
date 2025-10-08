@@ -1,7 +1,7 @@
-// Application configuration (formerly Firebase config)
+// Application configuration for Render PostgreSQL backend
 
-export const app = null; // Firebase app placeholder (not used)
-export const db = null;  // Firestore placeholder (not used)
+export const app = null; // Legacy placeholder (not used)
+export const db = null;  // Legacy placeholder (not used)
 export const analytics = null;
 
 export const appConfig = {
@@ -41,7 +41,7 @@ export const appConfig = {
   },
 };
 
-console.log('🔥 App configuration loaded:', {
+console.log('✅ App configuration loaded:', {
   apiBase: appConfig.api.baseUrl,
   environment: location.hostname === 'localhost' ? 'development' : 'production'
 });

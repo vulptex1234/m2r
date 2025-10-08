@@ -1,7 +1,7 @@
 // Real-time IoT Data Processing System
 import { IoTProcessingEngine, AnalyticsLogger } from './analytics-engine.js';
-import { firestoreService } from './firestore-service.js';
-import { appConfig } from './firebase-config.js';
+import { backendService } from './backend-service.js';
+import { appConfig } from './app-config.js';
 
 // Weather API Service with CORS proxy
 class WeatherService {
@@ -59,7 +59,7 @@ class WeatherService {
       };
 
       // Cache the forecast
-      await firestoreService.saveForecastCache(forecastData);
+      await backendService.saveForecastCache(forecastData);
       this.lastFetchTime = now;
 
       AnalyticsLogger.log('Weather forecast updated', {
@@ -85,7 +85,7 @@ class WeatherService {
     await this.fetchForecast();
 
     // Always return cached data (latest available)
-    const cached = await firestoreService.getLatestForecast();
+    const cached = await backendService.getLatestForecast();
     return cached.forecastC;
   }
 }
@@ -137,7 +137,7 @@ export class RealtimeProcessor {
    * Setup listener for new IoT measurements
    */
   setupMeasurementListener() {
-    firestoreService.setupRawMeasurementListener(async (rawMeasurement) => {
+    backendService.setupRawMeasurementListener(async (rawMeasurement) => {
       if (this.isProcessing) {
         AnalyticsLogger.log('⏳ Skipping measurement - processor busy');
         return;
@@ -168,7 +168,7 @@ export class RealtimeProcessor {
       const forecastC = await this.weatherService.getCurrentForecast();
 
       // Get previous node state
-      const previousState = await firestoreService.getControlState(rawMeasurement.nodeId) || {};
+      const previousState = await backendService.getControlState(rawMeasurement.nodeId) || {};
 
       // Process with analytics engine
       const processingResult = IoTProcessingEngine.processMeasurement(
@@ -183,7 +183,7 @@ export class RealtimeProcessor {
       );
 
       // Save results in batch via backend API
-      await firestoreService.saveMeasurementBatch(processingResult);
+      await backendService.saveMeasurementBatch(processingResult);
 
       // Update metrics
       this.processedCount++;
@@ -202,7 +202,7 @@ export class RealtimeProcessor {
 
       if (rawMeasurement.id) {
         try {
-          await firestoreService.deleteRawMeasurement(rawMeasurement.id);
+          await backendService.deleteRawMeasurement(rawMeasurement.id);
         } catch (cleanupError) {
           AnalyticsLogger.error('Failed to delete raw measurement', cleanupError);
         }
@@ -239,7 +239,7 @@ export class RealtimeProcessor {
     this.cleanupInterval = setInterval(async () => {
       if (!document.hidden) {
         try {
-          const deletedCount = await firestoreService.cleanupOldMeasurements();
+          const deletedCount = await backendService.cleanupOldMeasurements();
           if (deletedCount > 0) {
             AnalyticsLogger.log(`🗑️ Cleaned up ${deletedCount} old records`);
           }
@@ -258,7 +258,7 @@ export class RealtimeProcessor {
   startHealthMonitoring() {
     setInterval(async () => {
       try {
-        const health = await firestoreService.getSystemHealth();
+        const health = await backendService.getSystemHealth();
         const avgProcessingTime = this.processingTimes.length > 0 ?
           this.processingTimes.reduce((a, b) => a + b, 0) / this.processingTimes.length : 0;
 
@@ -375,7 +375,7 @@ export class RealtimeProcessor {
     }
 
     // Cleanup backend polling listeners
-    firestoreService.cleanup();
+    backendService.cleanup();
 
     AnalyticsLogger.log('✅ Real-time processor shutdown complete');
   }
