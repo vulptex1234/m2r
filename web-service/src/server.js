@@ -33,6 +33,10 @@ const {
   generateWeatherHistoryCSV,
   generateExportFilename
 } = require('../../shared/export-service');
+const {
+  processMeasurementWithRating,
+  canProcessMeasurement
+} = require('../../shared/measurement-processor');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 3000;
@@ -194,6 +198,7 @@ app.post('/api/measurements', async (req, res) => {
     await startup;
     const { deviceId, temperature, humidity, recordedAt, payload } = req.body || {};
 
+    // 1. Validation
     if (!deviceId) {
       return res.status(400).json({ error: 'deviceId is required' });
     }
@@ -212,6 +217,7 @@ app.post('/api/measurements', async (req, res) => {
       return res.status(400).json({ error: 'recordedAt must be a valid ISO date string' });
     }
 
+    // 2. Save to device_measurements table
     await insertDeviceMeasurement({
       deviceId,
       temperature: tempValue,
@@ -220,7 +226,46 @@ app.post('/api/measurements', async (req, res) => {
       payload: payload ?? req.body
     });
 
-    return res.status(201).json({ status: 'ok' });
+    console.log(`📥 [measurements] Received from ${deviceId}: temp=${tempValue}°C, humidity=${humidityValue}%`);
+
+    // 3. Execute backend rate decision (NEW!)
+    const measurementData = {
+      deviceId,
+      temperature: tempValue,
+      humidity: humidityValue,
+      voltage: payload?.voltage_v,
+      current: payload?.current_ma,
+      power: payload?.power_mw,
+      recordedAt
+    };
+
+    if (canProcessMeasurement(measurementData)) {
+      try {
+        const processingResult = await processMeasurementWithRating(measurementData);
+
+        if (processingResult) {
+          console.log(`✅ [measurements] Rate decision completed for ${deviceId}: ${processingResult.targetRate}`);
+        } else {
+          console.log(`⚠️ [measurements] Rate decision skipped for ${deviceId} (forecast unavailable or first measurement)`);
+        }
+      } catch (processingError) {
+        // Rate decision errors are non-fatal - log and continue
+        console.error(`❌ [measurements] Rate decision failed for ${deviceId} (non-fatal):`, processingError.message);
+      }
+    } else {
+      console.warn(`⚠️ [measurements] Cannot process measurement from ${deviceId} (invalid data)`);
+    }
+
+    // 4. Calculate next interval (uses updated control_states)
+    const nextInterval = await calculateNextInterval(deviceId);
+
+    console.log(`📤 [measurements] Responding to ${deviceId}: nextInterval=${nextInterval}s`);
+
+    return res.status(201).json({
+      status: 'ok',
+      nextIntervalSeconds: nextInterval,
+      message: 'Measurement recorded successfully'
+    });
   } catch (error) {
     console.error('[measurements] failed', error);
     return res.status(500).json({
@@ -556,6 +601,52 @@ app.get('/api/export/weather-history', async (req, res) => {
     });
   }
 });
+
+/**
+ * Rate-to-interval mapping configuration
+ *
+ * Defines how frequently ESP32 should send measurements based on
+ * the control system's target rate level.
+ */
+const RATE_INTERVAL_MAP = {
+  HIGH: 60,       // 1 minute  - High frequency monitoring (anomaly detection)
+  MEDIUM: 300,    // 5 minutes - Normal operation
+  LOW: 900,       // 15 minutes - Power saving mode
+  DEFAULT: 300    // 5 minutes - Unknown/initial state
+};
+
+/**
+ * Calculates recommended measurement interval for ESP32 device
+ *
+ * Queries the control_states table to determine the current target rate
+ * for the device and returns the corresponding sampling interval in seconds.
+ *
+ * @param {string} deviceId - Device identifier (e.g., "esp32-node-01")
+ * @returns {Promise<number>} Recommended interval in seconds
+ */
+async function calculateNextInterval(deviceId) {
+  try {
+    await startup;
+
+    // Query control state for this device (deviceId maps to nodeId)
+    const controlState = await getControlState(deviceId);
+
+    if (!controlState || !controlState.targetRate) {
+      console.log(`📊 [interval-control] No control state for device ${deviceId}, using DEFAULT interval: ${RATE_INTERVAL_MAP.DEFAULT}s`);
+      return RATE_INTERVAL_MAP.DEFAULT;
+    }
+
+    const targetRate = controlState.targetRate;
+    const interval = RATE_INTERVAL_MAP[targetRate] || RATE_INTERVAL_MAP.DEFAULT;
+
+    console.log(`📊 [interval-control] Device ${deviceId}: targetRate=${targetRate}, nextInterval=${interval}s`);
+
+    return interval;
+  } catch (error) {
+    console.error(`❌ [interval-control] Failed to calculate interval for ${deviceId}:`, error);
+    return RATE_INTERVAL_MAP.DEFAULT; // Fallback to default on error
+  }
+}
 
 app.listen(PORT, () => {
   console.log(`🚀 Historical weather API listening on port ${PORT}`);
