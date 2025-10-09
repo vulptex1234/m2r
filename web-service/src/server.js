@@ -26,6 +26,13 @@ const {
   deleteAllHistoricalWeather,
   deleteAllData
 } = require('../../shared/persistence');
+const {
+  generateDeviceMeasurementsCSV,
+  generateProcessedMeasurementsCSV,
+  generateControlStatesCSV,
+  generateWeatherHistoryCSV,
+  generateExportFilename
+} = require('../../shared/export-service');
 
 const app = express();
 const PORT = process.env.PORT || process.env.APP_PORT || 3000;
@@ -438,6 +445,113 @@ app.delete('/api/all-data', async (req, res) => {
     console.error('[all-data:delete] failed', error);
     return res.status(500).json({
       error: 'Failed to delete all data',
+      message: error.message
+    });
+  }
+});
+
+// CSV Export endpoints
+app.get('/api/export/device-measurements', async (req, res) => {
+  try {
+    await startup;
+    const { startDate, endDate, deviceId, limit } = req.query;
+
+    const csv = await generateDeviceMeasurementsCSV({
+      startDate,
+      endDate,
+      deviceId,
+      limit: limit ? Number(limit) : undefined
+    });
+
+    const filename = generateExportFilename('device_measurements', startDate, endDate);
+
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    res.set('Cache-Control', 'no-cache');
+
+    return res.send(csv);
+  } catch (error) {
+    console.error('[export:device-measurements] failed', error);
+    return res.status(500).json({
+      error: 'Failed to export device measurements',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/export/processed-measurements', async (req, res) => {
+  try {
+    await startup;
+    const { startDate, endDate, nodeId, limit } = req.query;
+
+    const csv = await generateProcessedMeasurementsCSV({
+      startDate,
+      endDate,
+      nodeId,
+      limit: limit ? Number(limit) : undefined
+    });
+
+    const filename = generateExportFilename('processed_measurements', startDate, endDate);
+
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    res.set('Cache-Control', 'no-cache');
+
+    return res.send(csv);
+  } catch (error) {
+    console.error('[export:processed-measurements] failed', error);
+    return res.status(500).json({
+      error: 'Failed to export processed measurements',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/export/control-states', async (req, res) => {
+  try {
+    await startup;
+    const { nodeId } = req.query;
+
+    const csv = await generateControlStatesCSV({ nodeId });
+
+    const filename = generateExportFilename('control_states');
+
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    res.set('Cache-Control', 'no-cache');
+
+    return res.send(csv);
+  } catch (error) {
+    console.error('[export:control-states] failed', error);
+    return res.status(500).json({
+      error: 'Failed to export control states',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/export/weather-history', async (req, res) => {
+  try {
+    await startup;
+    const { startDate, endDate, limit } = req.query;
+
+    const csv = await generateWeatherHistoryCSV({
+      startDate,
+      endDate,
+      limit: limit ? Number(limit) : undefined
+    });
+
+    const filename = generateExportFilename('weather_history', startDate, endDate);
+
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${filename}"`);
+    res.set('Cache-Control', 'no-cache');
+
+    return res.send(csv);
+  } catch (error) {
+    console.error('[export:weather-history] failed', error);
+    return res.status(500).json({
+      error: 'Failed to export weather history',
       message: error.message
     });
   }

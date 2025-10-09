@@ -4,6 +4,7 @@ import { backendService } from './backend-service.js';
 import { weatherService } from './weather-service.js';
 import { appConfig } from './app-config.js';
 import { RateLevel } from './analytics-engine.js';
+import { exportManager } from './export-manager.js';
 
 class DashboardController {
   constructor() {
@@ -2175,6 +2176,9 @@ class DashboardController {
 document.addEventListener('DOMContentLoaded', async () => {
   const dashboard = new DashboardController();
   await dashboard.initialize();
+
+  // Initialize export manager
+  exportManager.init();
 });
 
 // Export for debugging
