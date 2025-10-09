@@ -300,6 +300,97 @@ async function getLatestForecastSnapshot() {
   };
 }
 
+/**
+ * Get forecast snapshot best suited for measurement time
+ *
+ * Searches historical forecast snapshots to find one that:
+ * 1. Was fetched before the measurement time
+ * 2. Has fullForecast data covering the measurement time
+ * 3. Is closest to the measurement time (most recent)
+ *
+ * This enables interpolation even when current snapshot doesn't have
+ * forecasts before the measurement time.
+ *
+ * @param {string} measurementTimestamp - ISO timestamp of measurement
+ * @returns {Promise<Object|null>} Best matching forecast snapshot
+ */
+async function getForecastSnapshotForMeasurementTime(measurementTimestamp) {
+  await initSchema();
+  const pool = getPool();
+
+  const measurementTime = new Date(measurementTimestamp);
+
+  // Get forecast snapshots fetched before measurement time, ordered by fetched_at DESC
+  const { rows } = await pool.query(
+    `SELECT snapshot, fetched_at
+       FROM forecast_snapshots
+      WHERE fetched_at <= $1
+      ORDER BY fetched_at DESC
+      LIMIT 10`,  // Get last 10 snapshots for analysis
+    [measurementTime]
+  );
+
+  if (!rows.length) {
+    console.warn(`⚠️ [persistence] No forecast snapshots found before ${measurementTimestamp}`);
+    return null;
+  }
+
+  // Find the best snapshot that covers the measurement time
+  const measurementMs = measurementTime.getTime();
+
+  for (const row of rows) {
+    const snapshot = row.snapshot;
+
+    if (!snapshot || !snapshot.fullForecast || !Array.isArray(snapshot.fullForecast)) {
+      continue;
+    }
+
+    // Check if this snapshot's fullForecast covers the measurement time
+    // We need at least one forecast entry before and one after the measurement time
+    let hasEntryBefore = false;
+    let hasEntryAfter = false;
+
+    for (const entry of snapshot.fullForecast) {
+      if (!entry.dateTime) continue;
+
+      const entryTime = new Date(entry.dateTime).getTime();
+
+      if (entryTime <= measurementMs) {
+        hasEntryBefore = true;
+      }
+      if (entryTime >= measurementMs) {
+        hasEntryAfter = true;
+      }
+
+      if (hasEntryBefore && hasEntryAfter) {
+        break;
+      }
+    }
+
+    // If this snapshot covers the measurement time, use it
+    if (hasEntryBefore && hasEntryAfter) {
+      console.log(`✅ [persistence] Found historical forecast covering ${measurementTimestamp}`, {
+        fetchedAt: row.fetched_at.toISOString(),
+        forecastCount: snapshot.fullForecast.length
+      });
+
+      return {
+        ...snapshot,
+        fetchedAt: row.fetched_at ? row.fetched_at.toISOString() : null
+      };
+    }
+  }
+
+  // No snapshot covers the measurement time perfectly
+  // Fall back to the most recent snapshot before measurement
+  console.warn(`⚠️ [persistence] No forecast snapshot covers ${measurementTimestamp}, using most recent`);
+
+  return {
+    ...rows[0].snapshot,
+    fetchedAt: rows[0].fetched_at ? rows[0].fetched_at.toISOString() : null
+  };
+}
+
 async function cleanupOldProcessedMeasurements(days = 30) {
   await initSchema();
   const pool = getPool();
@@ -309,6 +400,37 @@ async function cleanupOldProcessedMeasurements(days = 30) {
     `DELETE FROM processed_measurements WHERE created_at < $1`,
     [cutoff]
   );
+  return result.rowCount;
+}
+
+/**
+ * Cleanup old forecast snapshots
+ *
+ * Removes forecast snapshots older than specified days.
+ * Keeps at least one snapshot for safety.
+ *
+ * @param {number} days - Number of days to retain (default: 7)
+ * @returns {Promise<number>} Number of rows deleted
+ */
+async function cleanupOldForecastSnapshots(days = 7) {
+  await initSchema();
+  const pool = getPool();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+
+  // Always keep at least one snapshot (the most recent)
+  const result = await pool.query(
+    `DELETE FROM forecast_snapshots
+     WHERE fetched_at < $1
+     AND id NOT IN (
+       SELECT id FROM forecast_snapshots
+       ORDER BY fetched_at DESC
+       LIMIT 1
+     )`,
+    [cutoff]
+  );
+
+  console.log(`🧹 [cleanup] Deleted ${result.rowCount} old forecast snapshots (older than ${days} days)`);
   return result.rowCount;
 }
 
@@ -479,7 +601,9 @@ module.exports = {
   deleteRawMeasurementById,
   saveForecastSnapshot,
   getLatestForecastSnapshot,
+  getForecastSnapshotForMeasurementTime,
   cleanupOldProcessedMeasurements,
+  cleanupOldForecastSnapshots,
   getSystemHealthSnapshot,
   deleteAllMeasurements,
   deleteAllHistoricalWeather,

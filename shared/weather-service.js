@@ -10,7 +10,7 @@
  * - This prevents API cost increase when processing ESP32 measurements
  */
 
-const { getLatestForecastSnapshot } = require('./persistence');
+const { getLatestForecastSnapshot, getForecastSnapshotForMeasurementTime } = require('./persistence');
 
 /**
  * Evaluate cache freshness
@@ -151,7 +151,8 @@ function linearInterpolate(x, x1, y1, x2, y2) {
  */
 async function getForecastForTimestamp(measurementTimestamp) {
   try {
-    const forecast = await getLatestForecastSnapshot();
+    // Use historical forecast snapshot that best matches the measurement time
+    const forecast = await getForecastSnapshotForMeasurementTime(measurementTimestamp);
 
     if (!forecast) {
       console.warn('⚠️ [weather] No forecast snapshot available');
