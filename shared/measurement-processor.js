@@ -11,7 +11,7 @@
  */
 
 const { IoTProcessingEngine } = require('./analytics-service');
-const { getCachedForecast } = require('./weather-service');
+const { getForecastForTimestamp } = require('./weather-service');
 const { getControlState, saveProcessedMeasurementBatch } = require('./persistence');
 
 /**
@@ -34,8 +34,9 @@ async function processMeasurementWithRating(measurementData) {
   const { deviceId, temperature, humidity, voltage, current, power, recordedAt } = measurementData;
 
   try {
-    // Step 1: Get weather forecast from cache
-    const forecast = await getCachedForecast();
+    // Step 1: Get weather forecast matching measurement timestamp
+    const measurementTime = recordedAt || new Date().toISOString();
+    const forecast = await getForecastForTimestamp(measurementTime);
 
     if (!forecast || forecast.forecastC === null || forecast.forecastC === undefined) {
       console.warn(`⚠️ [processor] No forecast available for ${deviceId}, trying fallback strategy`);
@@ -69,6 +70,9 @@ async function processMeasurementWithRating(measurementData) {
     console.log(`📊 [processor] Processing ${deviceId}:`, {
       temperature,
       forecastC: forecast.forecastC,
+      forecastTime: forecast.forecastTime,
+      timeDiff: forecast.timeDiffMinutes ? `${forecast.timeDiffMinutes}min` : 'N/A',
+      matchQuality: forecast.matchQuality || 'N/A',
       previousRate: previousState.targetRate || 'N/A'
     });
 
@@ -87,6 +91,9 @@ async function processMeasurementWithRating(measurementData) {
     console.log(`📊 [processor] Rate decision for ${deviceId}:`, {
       observedC: processingResult.observedC,
       forecastC: processingResult.forecastC,
+      forecastTime: forecast.forecastTime,
+      timeDiff: forecast.timeDiffMinutes ? `${forecast.timeDiffMinutes}min` : 'N/A',
+      matchQuality: forecast.matchQuality || 'N/A',
       absError: processingResult.absError,
       sErr: processingResult.sErr,
       targetRate: processingResult.targetRate,
