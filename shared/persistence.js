@@ -434,6 +434,46 @@ async function cleanupOldForecastSnapshots(days = 7) {
   return result.rowCount;
 }
 
+/**
+ * Get recent forecast snapshots for visualization
+ *
+ * Retrieves forecast snapshots from the past specified hours
+ * for displaying forecast history trends in the UI.
+ *
+ * @param {number} hours - Number of hours to look back (default: 24)
+ * @param {number} limit - Maximum number of snapshots to return (default: 100)
+ * @returns {Promise<Array>} Array of forecast snapshots
+ */
+async function getRecentForecastSnapshots({ hours = 24, limit = 100 } = {}) {
+  await initSchema();
+  const pool = getPool();
+
+  const cutoff = new Date();
+  cutoff.setTime(cutoff.getTime() - hours * 60 * 60 * 1000);
+
+  const safeLimit = Math.min(500, Math.max(1, Number(limit) || 100));
+
+  const { rows } = await pool.query(
+    `SELECT id, snapshot, fetched_at
+       FROM forecast_snapshots
+      WHERE fetched_at >= $1
+      ORDER BY fetched_at DESC
+      LIMIT $2`,
+    [cutoff, safeLimit]
+  );
+
+  return rows.map(row => ({
+    id: row.id,
+    snapshot: row.snapshot,
+    fetchedAt: row.fetched_at ? row.fetched_at.toISOString() : null,
+    // Extract key forecast data for easy access
+    forecastC: row.snapshot?.forecastC || null,
+    forecastTime: row.snapshot?.forecastTime || null,
+    provider: row.snapshot?.provider || null,
+    fullForecastCount: Array.isArray(row.snapshot?.fullForecast) ? row.snapshot.fullForecast.length : 0
+  }));
+}
+
 async function getSystemHealthSnapshot() {
   await initSchema();
   const pool = getPool();
@@ -602,6 +642,7 @@ module.exports = {
   saveForecastSnapshot,
   getLatestForecastSnapshot,
   getForecastSnapshotForMeasurementTime,
+  getRecentForecastSnapshots,
   cleanupOldProcessedMeasurements,
   cleanupOldForecastSnapshots,
   getSystemHealthSnapshot,

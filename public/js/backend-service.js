@@ -84,6 +84,22 @@ class BackendDataService {
     });
   }
 
+  /**
+   * Get recent forecast snapshots for historical visualization
+   *
+   * @param {Object} options - Query options
+   * @param {number} options.hours - Time window in hours (default: 24)
+   * @param {number} options.limit - Maximum records to return (default: 100)
+   * @returns {Promise<Array>} Array of forecast snapshots
+   */
+  async getForecastSnapshots({ hours = 24, limit = 100 } = {}) {
+    const url = this.buildUrl(this.endpoints.forecastSnapshots, { hours, limit });
+    return this.retryOperation(async () => {
+      const payload = await this.request(url);
+      return Array.isArray(payload?.data) ? payload.data : [];
+    });
+  }
+
   async saveMeasurementBatch(processingResult) {
     const url = this.buildUrl(this.endpoints.processedMeasurements);
     return this.retryOperation(async () => {

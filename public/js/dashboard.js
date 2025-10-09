@@ -11,7 +11,9 @@ class DashboardController {
     this.measurementsChart = null;
     this.historicalChart = null;
     this.forecastChart = null;
+    this.forecastHistoryChart = null;
     this.chartTimeframe = '1h'; // 1h, 6h, 24h
+    this.forecastHistoryTimeframe = 24; // Hours to display (24h, 48h, 72h)
     this.nodeStates = new Map();
 
     // Separate data sources for proper management
@@ -137,6 +139,27 @@ class DashboardController {
     this.elements.chart72h?.addEventListener('click', () => this.switchChartTimeframe('72h'));
     this.elements.chart120h?.addEventListener('click', () => this.switchChartTimeframe('120h'));
 
+    // Forecast history timeframe buttons
+    document.querySelectorAll('.forecast-history-time-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const hours = parseInt(e.target.dataset.hours);
+        if (!isNaN(hours)) {
+          this.forecastHistoryTimeframe = hours;
+
+          // Update button states
+          document.querySelectorAll('.forecast-history-time-btn').forEach(b => {
+            b.classList.remove('bg-brand-blue', 'text-white');
+            b.classList.add('bg-gray-200', 'dark:bg-gray-700');
+          });
+          e.target.classList.add('bg-brand-blue', 'text-white');
+          e.target.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+
+          // Reload forecast history with new timeframe
+          await this.loadForecastHistory(hours);
+        }
+      });
+    });
+
     // Control buttons
     this.elements.refreshForecast?.addEventListener('click', async () => {
       await this.manualForecastRefresh();
@@ -203,6 +226,7 @@ class DashboardController {
     this.initializeMeasurementsChart();
     this.initializeHistoricalChart();
     this.initializeForecastChart();
+    this.initializeForecastHistoryChart();
   }
 
   /**
@@ -615,6 +639,108 @@ class DashboardController {
   }
 
   /**
+   * Initialize forecast history chart
+   *
+   * Displays how forecast predictions changed over time.
+   * Each line represents a forecast snapshot fetched at a different time.
+   */
+  initializeForecastHistoryChart() {
+    const ctx = document.getElementById('forecast-history-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    this.forecastHistoryChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: []  // Will be populated dynamically
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 10,
+              font: {
+                size: 10
+              }
+            }
+          },
+          title: {
+            display: true,
+            text: '予測の変化を表示（各線は異なる時刻に取得した予測）',
+            font: {
+              size: 11
+            },
+            color: '#666'
+          },
+          tooltip: {
+            callbacks: {
+              title: (tooltipItems) => {
+                const item = tooltipItems[0];
+                if (!item || !item.raw) return '';
+
+                const date = new Date(item.raw.x);
+                const options = {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                  timeZone: 'Asia/Tokyo'
+                };
+
+                return '予測対象: ' + date.toLocaleString('ja-JP', options);
+              },
+              label: (context) => {
+                const label = context.dataset.label || '';
+                const value = context.parsed.y;
+                return `${label}: ${value?.toFixed(1) || ''}°C`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            title: {
+              display: true,
+              text: '温度 (°C)'
+            },
+            ticks: {
+              maxTicksLimit: 8
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: '予測対象時刻'
+            },
+            type: 'time',
+            time: {
+              unit: 'hour',
+              stepSize: 3,
+              displayFormats: {
+                hour: 'MM/dd HH:00'
+              }
+            },
+            ticks: {
+              maxTicksLimit: 20,
+              autoSkip: true
+            }
+          }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index'
+        }
+      }
+    });
+  }
+
+  /**
    * Load initial data
    */
   async loadInitialData() {
@@ -671,6 +797,9 @@ class DashboardController {
 
       // Load device measurements (ESP32 actual readings)
       await this.fetchDeviceMeasurements(20, { silent: true });
+
+      // Load forecast history
+      await this.loadForecastHistory(this.forecastHistoryTimeframe);
 
       console.log('📊 Initial data loaded:', {
         measurementCount: measurements.length,
@@ -1151,6 +1280,107 @@ class DashboardController {
       timeRange: allForecastData.length > 0 ?
         `${new Date(Math.min(...allTimestamps)).toISOString()} - ${new Date(Math.max(...allTimestamps)).toISOString()}` : 'No data'
     });
+  }
+
+  /**
+   * Load and display forecast history
+   *
+   * Fetches recent forecast snapshots and updates the forecast history chart.
+   */
+  async loadForecastHistory(hours = 24) {
+    try {
+      console.log(`📊 Loading forecast history for past ${hours} hours...`);
+
+      const snapshots = await backendService.getForecastSnapshots({ hours, limit: 100 });
+
+      if (!snapshots || snapshots.length === 0) {
+        console.warn('⚠️ No forecast snapshots available');
+        this.updateForecastHistoryStatus('データなし');
+        return;
+      }
+
+      console.log(`📥 Loaded ${snapshots.length} forecast snapshots`);
+      this.updateForecastHistoryChart(snapshots);
+      this.updateForecastHistoryStatus(`${snapshots.length}件のスナップショット`);
+
+    } catch (error) {
+      console.error('❌ Failed to load forecast history:', error);
+      this.updateForecastHistoryStatus('読み込み失敗');
+      this.showAlert('warning', '予測履歴の読み込みに失敗しました');
+    }
+  }
+
+  /**
+   * Update forecast history chart with snapshot data
+   *
+   * Creates multiple datasets, each representing a forecast snapshot
+   * fetched at a different time.
+   */
+  updateForecastHistoryChart(snapshots) {
+    if (!this.forecastHistoryChart) return;
+
+    if (!Array.isArray(snapshots) || snapshots.length === 0) {
+      this.forecastHistoryChart.data.datasets = [];
+      this.forecastHistoryChart.update('none');
+      return;
+    }
+
+    // Generate color gradient (older = lighter, newer = darker)
+    const generateColor = (index, total) => {
+      const hue = 25; // Orange hue
+      const saturation = 80;
+      const lightness = 70 - (index / total) * 40; // 70% to 30%
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    };
+
+    // Create dataset for each snapshot
+    const datasets = snapshots
+      .filter(snap => snap.snapshot?.fullForecast && Array.isArray(snap.snapshot.fullForecast))
+      .reverse() // Oldest first for color gradient
+      .map((snap, index, array) => {
+        const fetchedAt = new Date(snap.fetchedAt);
+        const fullForecast = snap.snapshot.fullForecast;
+
+        // Extract forecast points
+        const dataPoints = fullForecast
+          .filter(entry => entry.dateTime && entry.temperature !== null)
+          .map(entry => ({
+            x: new Date(entry.dateTime),
+            y: entry.temperature
+          }))
+          .sort((a, b) => a.x - b.x);
+
+        const color = generateColor(index, array.length);
+        const isNewest = index === array.length - 1;
+
+        return {
+          label: `${fetchedAt.toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' })}取得`,
+          data: dataPoints,
+          borderColor: color,
+          backgroundColor: color,
+          borderWidth: isNewest ? 2.5 : 1.5,
+          pointRadius: isNewest ? 3 : 1.5,
+          pointHoverRadius: 5,
+          fill: false,
+          tension: 0.2,
+          spanGaps: true
+        };
+      });
+
+    this.forecastHistoryChart.data.datasets = datasets;
+    this.forecastHistoryChart.update('none');
+
+    console.log(`📊 Forecast history chart updated with ${datasets.length} forecast lines`);
+  }
+
+  /**
+   * Update forecast history status display
+   */
+  updateForecastHistoryStatus(statusText) {
+    const statusElement = document.getElementById('forecast-history-status');
+    if (statusElement) {
+      statusElement.textContent = statusText;
+    }
   }
 
   /**

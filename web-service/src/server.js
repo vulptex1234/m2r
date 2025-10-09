@@ -21,6 +21,7 @@ const {
   deleteRawMeasurementById,
   saveForecastSnapshot,
   getLatestForecastSnapshot,
+  getRecentForecastSnapshots,
   cleanupOldProcessedMeasurements,
   getSystemHealthSnapshot,
   deleteAllMeasurements,
@@ -450,6 +451,37 @@ app.get('/api/forecast/snapshot', async (_req, res) => {
     console.error('[forecast:snapshot] failed', error);
     return res.status(500).json({
       error: 'Failed to fetch forecast snapshot',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Get recent forecast snapshots for historical visualization
+ *
+ * Retrieves forecast snapshots fetched within the specified time period.
+ * Used to display how forecast predictions changed over time.
+ *
+ * Query parameters:
+ * - hours: Time window (1-168, default 24)
+ * - limit: Maximum records (1-500, default 100)
+ *
+ * @returns {Array} Forecast snapshots with metadata
+ */
+app.get('/api/forecast-snapshots', async (req, res) => {
+  try {
+    await startup;
+    const hours = Math.min(168, Math.max(1, Number(req.query.hours) || 24));
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
+
+    const data = await getRecentForecastSnapshots({ hours, limit });
+
+    res.set('Cache-Control', 'no-cache');
+    return res.json({ data });
+  } catch (error) {
+    console.error('[forecast-snapshots:list] failed', error);
+    return res.status(500).json({
+      error: 'Failed to fetch forecast snapshots',
       message: error.message
     });
   }

@@ -31,7 +31,8 @@ export const appConfig = {
       controlStates: '/api/control-states',
       rawMeasurements: '/api/raw-measurements',
       systemHealth: '/api/system-health',
-      forecastSnapshot: '/api/forecast/snapshot'
+      forecastSnapshot: '/api/forecast/snapshot',
+      forecastSnapshots: '/api/forecast-snapshots'  // Historical forecast snapshots
     }
   },
   ui: {

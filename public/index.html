@@ -232,6 +232,30 @@
           </div>
         </div>
 
+        <!-- Forecast History Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">📈 予測履歴</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">過去24時間の予測変化</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <div class="text-sm text-gray-500" id="forecast-history-status">
+                <!-- Status info -->
+              </div>
+              <div class="flex space-x-1">
+                <button class="forecast-history-time-btn px-3 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 hover:bg-brand-blue hover:text-white rounded transition-colors duration-200" data-hours="24">24h</button>
+                <button class="forecast-history-time-btn px-3 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 hover:bg-brand-blue hover:text-white rounded transition-colors duration-200" data-hours="48">48h</button>
+                <button class="forecast-history-time-btn px-3 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 hover:bg-brand-blue hover:text-white rounded transition-colors duration-200" data-hours="72">72h</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative h-80">
+            <canvas id="forecast-history-chart"></canvas>
+          </div>
+        </div>
+
       </div>
 
       <!-- Control Panel & System Info -->
