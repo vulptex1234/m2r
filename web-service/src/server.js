@@ -14,6 +14,7 @@ const {
   getRecentDeviceMeasurements,
   saveProcessedMeasurementBatch,
   getRecentProcessedMeasurements,
+  getRecentScoreLogs,
   getControlState,
   insertRawMeasurement,
   getRawMeasurements,
@@ -321,6 +322,23 @@ app.post('/api/processed-measurements/cleanup', async (req, res) => {
     console.error('[processed-measurements:cleanup] failed', error);
     return res.status(500).json({
       error: 'Failed to cleanup measurements',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/score-logs', async (req, res) => {
+  try {
+    await startup;
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 50));
+    const nodeId = req.query.nodeId || null;
+    const data = await getRecentScoreLogs({ limit, nodeId });
+    res.set('Cache-Control', 'no-cache');
+    return res.json({ data });
+  } catch (error) {
+    console.error('[score-logs:list] failed', error);
+    return res.status(500).json({
+      error: 'Failed to fetch score logs',
       message: error.message
     });
   }

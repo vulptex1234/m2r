@@ -432,12 +432,47 @@ async function deleteAllData() {
   }
 }
 
+/**
+ * Get recent score logs with optional filtering by node ID
+ *
+ * @param {Object} options - Query options
+ * @param {number} options.limit - Maximum number of records to return (default: 50, max: 500)
+ * @param {string} options.nodeId - Optional node ID filter
+ * @returns {Promise<Array>} Array of score log entries
+ */
+async function getRecentScoreLogs({ limit = 50, nodeId = null } = {}) {
+  await initSchema();
+  const pool = getPool();
+  const safeLimit = Math.min(500, Math.max(1, Number(limit) || 50));
+
+  let query = `SELECT * FROM score_logs`;
+  const params = [];
+  if (nodeId) {
+    params.push(nodeId);
+    query += ` WHERE node_id = $${params.length}`;
+  }
+  params.push(safeLimit);
+  query += ` ORDER BY created_at DESC LIMIT $${params.length}`;
+
+  const { rows } = await pool.query(query, params);
+  return rows.map(row => ({
+    id: row.id,
+    nodeId: row.node_id,
+    mEwma: row.m_ewma != null ? Number(row.m_ewma) : null,
+    sigmaDay: row.sigma_day != null ? Number(row.sigma_day) : null,
+    sErr: row.s_err != null ? Number(row.s_err) : null,
+    targetRate: row.target_rate,
+    createdAt: row.created_at ? row.created_at.toISOString() : null
+  }));
+}
+
 module.exports = {
   upsertHistoricalDay,
   insertDeviceMeasurement,
   getRecentDeviceMeasurements,
   saveProcessedMeasurementBatch,
   getRecentProcessedMeasurements,
+  getRecentScoreLogs,
   getControlState,
   insertRawMeasurement,
   getRawMeasurements,
