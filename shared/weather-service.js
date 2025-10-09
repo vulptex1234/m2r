@@ -118,18 +118,36 @@ async function getForecastTemperature() {
 }
 
 /**
- * Get forecast data closest to measurement timestamp
+ * Linear interpolation between two values
  *
- * Searches through fullForecast array to find the forecast entry
- * with the closest timestamp to the measurement time.
- * This ensures accurate comparison between observed and predicted temperatures.
+ * @param {number} x - Target position
+ * @param {number} x1 - Start position
+ * @param {number} y1 - Start value
+ * @param {number} x2 - End position
+ * @param {number} y2 - End value
+ * @returns {number} Interpolated value at position x
+ */
+function linearInterpolate(x, x1, y1, x2, y2) {
+  if (x2 === x1) {
+    return y1; // Avoid division by zero
+  }
+  return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+}
+
+/**
+ * Get forecast data for measurement timestamp with linear interpolation
+ *
+ * Searches through fullForecast array to find forecasts surrounding the measurement time.
+ * Uses linear interpolation to calculate predicted temperature at exact measurement time.
+ * Falls back to closest forecast if interpolation is not possible.
  *
  * @param {string} measurementTimestamp - ISO timestamp of measurement
- * @returns {Promise<Object|null>} Forecast data with matched timestamp
- * @returns {number} return.forecastC - Forecast temperature in Celsius
- * @returns {string} return.forecastTime - ISO timestamp of matched forecast
- * @returns {number} return.timeDiffMinutes - Time difference in minutes (absolute value)
- * @returns {string} return.matchQuality - Quality of match: 'exact', 'good', 'acceptable', 'poor'
+ * @returns {Promise<Object|null>} Forecast data with interpolated or matched timestamp
+ * @returns {number} return.forecastC - Forecast temperature in Celsius (interpolated or exact)
+ * @returns {string} return.forecastTime - ISO timestamp of forecast (or measurement time if interpolated)
+ * @returns {number} return.timeDiffMinutes - Time difference in minutes (0 if interpolated)
+ * @returns {string} return.matchQuality - Quality: 'interpolated', 'exact', 'good', 'acceptable', 'poor', 'fallback'
+ * @returns {Object} return.interpolation - Interpolation details (if used)
  */
 async function getForecastForTimestamp(measurementTimestamp) {
   try {
@@ -153,21 +171,119 @@ async function getForecastForTimestamp(measurementTimestamp) {
 
     const measurementTime = new Date(measurementTimestamp).getTime();
 
-    // Find closest forecast entry
+    // Sort forecast entries by time (ascending)
+    const sortedForecasts = forecast.fullForecast
+      .filter(entry =>
+        entry.dateTime &&
+        entry.temperature !== null &&
+        entry.temperature !== undefined
+      )
+      .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+
+    if (sortedForecasts.length === 0) {
+      console.warn('⚠️ [weather] No valid forecast entries');
+      return null;
+    }
+
+    // Find forecast entries before and after measurement time
+    let beforeEntry = null;
+    let afterEntry = null;
+
+    for (let i = 0; i < sortedForecasts.length; i++) {
+      const entryTime = new Date(sortedForecasts[i].dateTime).getTime();
+
+      if (entryTime <= measurementTime) {
+        beforeEntry = sortedForecasts[i];
+      }
+
+      if (entryTime >= measurementTime && !afterEntry) {
+        afterEntry = sortedForecasts[i];
+        break;
+      }
+    }
+
+    // Case 1: Exact match (within 1 minute tolerance)
+    if (beforeEntry) {
+      const beforeTime = new Date(beforeEntry.dateTime).getTime();
+      const diffMinutes = Math.abs((measurementTime - beforeTime) / 60000);
+
+      if (diffMinutes <= 1) {
+        console.log(`📊 [weather] Exact match found:`, {
+          measured: measurementTimestamp,
+          forecast: beforeEntry.dateTime,
+          diff: `${Math.floor(diffMinutes)}min`,
+          quality: 'exact',
+          temp: beforeEntry.temperature + '°C'
+        });
+
+        return {
+          forecastC: beforeEntry.temperature,
+          forecastTime: beforeEntry.dateTime,
+          timeDiffMinutes: Math.floor(diffMinutes),
+          matchQuality: 'exact'
+        };
+      }
+    }
+
+    // Case 2: Interpolation between two forecasts
+    if (beforeEntry && afterEntry) {
+      const beforeTime = new Date(beforeEntry.dateTime).getTime();
+      const afterTime = new Date(afterEntry.dateTime).getTime();
+
+      // Only interpolate if measurement time is strictly between the two forecasts
+      if (measurementTime > beforeTime && measurementTime < afterTime) {
+        const interpolatedTemp = linearInterpolate(
+          measurementTime,
+          beforeTime,
+          beforeEntry.temperature,
+          afterTime,
+          afterEntry.temperature
+        );
+
+        const intervalMinutes = Math.floor((afterTime - beforeTime) / 60000);
+
+        console.log(`📊 [weather] Linear interpolation used:`, {
+          measured: measurementTimestamp,
+          before: { time: beforeEntry.dateTime, temp: beforeEntry.temperature },
+          after: { time: afterEntry.dateTime, temp: afterEntry.temperature },
+          interpolated: parseFloat(interpolatedTemp.toFixed(2)) + '°C',
+          interval: `${intervalMinutes}min`,
+          quality: 'interpolated'
+        });
+
+        return {
+          forecastC: parseFloat(interpolatedTemp.toFixed(2)),
+          forecastTime: measurementTimestamp, // Use measurement time as "forecast" time
+          timeDiffMinutes: 0, // Perfect match via interpolation
+          matchQuality: 'interpolated',
+          interpolation: {
+            beforeTime: beforeEntry.dateTime,
+            beforeTemp: beforeEntry.temperature,
+            afterTime: afterEntry.dateTime,
+            afterTemp: afterEntry.temperature,
+            intervalMinutes
+          }
+        };
+      }
+    }
+
+    // Case 3: Use closest forecast (before or after)
     let closestEntry = null;
     let minDiff = Infinity;
 
-    for (const entry of forecast.fullForecast) {
-      if (!entry.dateTime || entry.temperature === null || entry.temperature === undefined) {
-        continue;
-      }
-
-      const forecastTime = new Date(entry.dateTime).getTime();
-      const diff = Math.abs(forecastTime - measurementTime);
-
+    if (beforeEntry) {
+      const diff = Math.abs(new Date(beforeEntry.dateTime).getTime() - measurementTime);
       if (diff < minDiff) {
         minDiff = diff;
-        closestEntry = entry;
+        closestEntry = beforeEntry;
+      }
+    }
+
+    if (afterEntry) {
+      const diff = Math.abs(new Date(afterEntry.dateTime).getTime() - measurementTime);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestEntry = afterEntry;
       }
     }
 
@@ -177,21 +293,22 @@ async function getForecastForTimestamp(measurementTimestamp) {
       // Evaluate match quality
       let matchQuality;
       if (timeDiffMinutes <= 30) {
-        matchQuality = 'exact';      // Within 30 minutes
+        matchQuality = 'exact';
       } else if (timeDiffMinutes <= 90) {
-        matchQuality = 'good';       // Within 1.5 hours (3h forecast / 2)
+        matchQuality = 'good';
       } else if (timeDiffMinutes <= 180) {
-        matchQuality = 'acceptable'; // Within 3 hours (one forecast interval)
+        matchQuality = 'acceptable';
       } else {
-        matchQuality = 'poor';       // Over 3 hours
+        matchQuality = 'poor';
       }
 
-      console.log(`📊 [weather] Timestamp match:`, {
+      console.log(`📊 [weather] Closest match (no interpolation):`, {
         measured: measurementTimestamp,
         forecast: closestEntry.dateTime,
         diff: `${timeDiffMinutes}min`,
         quality: matchQuality,
-        temp: closestEntry.temperature + '°C'
+        temp: closestEntry.temperature + '°C',
+        reason: !beforeEntry ? 'before_range' : !afterEntry ? 'after_range' : 'edge_case'
       });
 
       return {
@@ -202,7 +319,7 @@ async function getForecastForTimestamp(measurementTimestamp) {
       };
     }
 
-    // No valid entry found, fall back to forecastC
+    // No valid entry found
     console.warn('⚠️ [weather] No valid forecast entry found, using forecastC fallback');
     return {
       forecastC: forecast.forecastC,

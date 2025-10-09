@@ -67,14 +67,25 @@ async function processMeasurementWithRating(measurementData) {
     // Step 2: Get previous control state
     const previousState = await getControlState(deviceId) || {};
 
-    console.log(`📊 [processor] Processing ${deviceId}:`, {
+    // Log processing details with interpolation info if available
+    const processingLog = {
       temperature,
       forecastC: forecast.forecastC,
       forecastTime: forecast.forecastTime,
-      timeDiff: forecast.timeDiffMinutes ? `${forecast.timeDiffMinutes}min` : 'N/A',
+      timeDiff: forecast.timeDiffMinutes !== null ? `${forecast.timeDiffMinutes}min` : 'N/A',
       matchQuality: forecast.matchQuality || 'N/A',
       previousRate: previousState.targetRate || 'N/A'
-    });
+    };
+
+    if (forecast.interpolation) {
+      processingLog.interpolation = {
+        from: `${forecast.interpolation.beforeTemp}°C at ${forecast.interpolation.beforeTime}`,
+        to: `${forecast.interpolation.afterTemp}°C at ${forecast.interpolation.afterTime}`,
+        interval: `${forecast.interpolation.intervalMinutes}min`
+      };
+    }
+
+    console.log(`📊 [processor] Processing ${deviceId}:`, processingLog);
 
     // Step 3: Execute rate decision analysis
     const processingResult = IoTProcessingEngine.processMeasurement(
@@ -88,18 +99,25 @@ async function processMeasurementWithRating(measurementData) {
       forecast.forecastC
     );
 
-    console.log(`📊 [processor] Rate decision for ${deviceId}:`, {
+    // Log rate decision with interpolation status
+    const rateDecisionLog = {
       observedC: processingResult.observedC,
       forecastC: processingResult.forecastC,
       forecastTime: forecast.forecastTime,
-      timeDiff: forecast.timeDiffMinutes ? `${forecast.timeDiffMinutes}min` : 'N/A',
+      timeDiff: forecast.timeDiffMinutes !== null ? `${forecast.timeDiffMinutes}min` : 'N/A',
       matchQuality: forecast.matchQuality || 'N/A',
       absError: processingResult.absError,
       sErr: processingResult.sErr,
       targetRate: processingResult.targetRate,
       previousRate: processingResult.previousRate,
       reason: processingResult.reason
-    });
+    };
+
+    if (forecast.matchQuality === 'interpolated') {
+      rateDecisionLog.note = 'Using linearly interpolated forecast';
+    }
+
+    console.log(`📊 [processor] Rate decision for ${deviceId}:`, rateDecisionLog);
 
     // Step 4: Save processing results to database
     // This updates both processed_measurements and control_states tables
