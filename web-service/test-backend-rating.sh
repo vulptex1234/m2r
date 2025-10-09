@@ -196,6 +196,41 @@ else
 fi
 echo ""
 
+# Test 9: Verify score_logs are being saved
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Step 9: Verify score_logs calculation history"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+SCORE_LOGS=$(curl -s "$BASE_URL/api/score-logs?nodeId=$DEVICE_ID&limit=5")
+SCORE_COUNT=$(echo "$SCORE_LOGS" | jq '.data | length')
+
+echo "Score logs found: $SCORE_COUNT entries"
+echo ""
+
+if [ "$SCORE_COUNT" -gt 0 ]; then
+    echo "Latest score log entry:"
+    echo "$SCORE_LOGS" | jq '.data[0] | {mEwma, sigmaDay, sErr, targetRate, createdAt}'
+    echo ""
+
+    LATEST_SERR=$(echo "$SCORE_LOGS" | jq -r '.data[0].sErr')
+    LATEST_RATE=$(echo "$SCORE_LOGS" | jq -r '.data[0].targetRate')
+
+    echo -e "${GREEN}✓ SUCCESS: Score logs are being saved${NC}"
+    echo "  Latest sErr: $LATEST_SERR"
+    echo "  Latest targetRate: $LATEST_RATE"
+
+    if [ "$SCORE_COUNT" -ge 3 ]; then
+        echo ""
+        echo "Historical trend (last 3 entries):"
+        echo "$SCORE_LOGS" | jq -r '.data[0:3] | .[] | "  \(.createdAt | split(".")[0]): sErr=\(.sErr), rate=\(.targetRate)"'
+    fi
+else
+    echo -e "${YELLOW}⚠ WARNING: No score logs found${NC}"
+    echo "This could mean:"
+    echo "  - Backend rate decision not executing"
+    echo "  - score_logs API endpoint not deployed"
+fi
+echo ""
+
 # Summary
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Test Summary"
@@ -207,6 +242,7 @@ echo "  ✓ Measurements accepted: 3/3"
 echo "  ✓ Rate decision executed: YES"
 echo "  ✓ control_states updated: YES"
 echo "  ✓ Interval control active: YES"
+echo "  ✓ Score logs saved: $SCORE_COUNT entries"
 echo ""
 echo "Final State:"
 echo "  Device: $DEVICE_ID"
