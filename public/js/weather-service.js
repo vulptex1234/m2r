@@ -248,35 +248,17 @@ export class WeatherService {
 
   /**
    * Cache forecast data to backend for system use
-   * @param {Array} forecastData - Forecast data array
+   *
+   * DEPRECATED: Forecast snapshots are now saved by server-side cron job only.
+   * This method is disabled to ensure uniform snapshot intervals.
+   *
+   * @param {Array} forecastData - Forecast data array (ignored)
    * @returns {Promise<void>}
    */
   async cacheForecastSnapshot(forecastData = null) {
-    try {
-      if (!forecastData) {
-        forecastData = await this.getForecast();
-      }
-
-      // Save to backend with timestamp
-      await backendService.saveForecastCache({
-        forecastC: forecastData[0]?.temperature || null,
-        forecastTime: (forecastData[0]?.dateTime instanceof Date)
-          ? forecastData[0].dateTime.toISOString()
-          : new Date().toISOString(),
-        provider: 'openweathermap',
-        fullForecast: forecastData.slice(0, 24), // First 24 points (3 days)
-        fetchedAt: new Date().toISOString()
-      });
-
-      console.log('💾 Forecast cached to backend:', {
-        currentTemp: forecastData[0]?.temperature,
-        totalPoints: forecastData.length
-      });
-
-    } catch (error) {
-      console.error('❌ Failed to cache forecast to backend:', error);
-      throw error;
-    }
+    console.warn('⚠️ [weather] cacheForecastSnapshot() is disabled. Forecast snapshots are saved by cron job only.');
+    // No-op: Forecast snapshots are managed by server-side cron job for uniform intervals
+    return;
   }
 
   /**
@@ -307,8 +289,8 @@ export class WeatherService {
       console.log('🔄 Fetching fresh forecast data...');
       const forecastData = await this.getForecast();
 
-      // Cache to backend
-      await this.cacheForecastSnapshot(forecastData);
+      // Note: Forecast snapshots are saved by cron job, not here
+      console.log('ℹ️ Forecast data fetched (snapshot saving handled by cron job)');
 
       return {
         current: forecastData[0]?.temperature || null,
@@ -393,12 +375,6 @@ export class WeatherService {
 // Export singleton instance
 export const weatherService = new WeatherService();
 
-// Auto-refresh forecast data every 30 minutes
-setInterval(async () => {
-  try {
-    console.log('🔄 Auto-refreshing weather forecast...');
-    await weatherService.cacheForecastSnapshot();
-  } catch (error) {
-    console.warn('⚠️ Auto-refresh failed:', error);
-  }
-}, 30 * 60 * 1000); // 30 minutes
+// Note: Forecast snapshot auto-saving is disabled.
+// Snapshots are now saved by server-side cron job to ensure uniform intervals.
+// Frontend still fetches forecast data for display, but doesn't save to database.

@@ -162,7 +162,8 @@ export class TestDataGenerator {
 
     console.log(`🌤️ Generating test forecast: ${forecastTemp.toFixed(1)}°C`);
 
-    await backendService.saveForecastCache(forecastData);
+    // Note: Forecast snapshots are saved by cron job, not here
+    // await backendService.saveForecastCache(forecastData);
     return forecastData;
   }
 

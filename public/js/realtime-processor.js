@@ -58,8 +58,8 @@ class WeatherService {
         raw: firstEntry
       };
 
-      // Cache the forecast
-      await backendService.saveForecastCache(forecastData);
+      // Note: Forecast snapshots are saved by cron job, not here
+      // await backendService.saveForecastCache(forecastData);
       this.lastFetchTime = now;
 
       AnalyticsLogger.log('Weather forecast updated', {
