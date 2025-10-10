@@ -1,0 +1,149 @@
+<mxfile host="app.diagrams.net" agent="Claude Code" version="24.0.0">
+  <diagram name="Operation Flow" id="operation-flow">
+    <mxGraphModel dx="1422" dy="1800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="2000">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="ESP32 IoT システム - 動作フロー図" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="214" y="20" width="400" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ESP32 Section -->
+        <mxCell id="esp32-start" value="&lt;b&gt;📡 ESP32 起動&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="264" y="80" width="300" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="esp32-sensor-read" value="&lt;b&gt;センサー読み取り&lt;/b&gt;&lt;br&gt;&lt;br&gt;• BMP280: 温度、湿度&lt;br&gt;• INA219: 電圧、電流、電力&lt;br&gt;• CSV保存 (temp.csv, elect.csv)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="150" width="300" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="esp32-post" value="&lt;b&gt;HTTP POST送信&lt;/b&gt;&lt;br&gt;&lt;br&gt;URL: /api/measurements&lt;br&gt;Payload: {&lt;br&gt;  deviceId: &quot;ESP32-001&quot;,&lt;br&gt;  temperature, humidity,&lt;br&gt;  voltage, current, power&lt;br&gt;}" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="280" width="300" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Backend Section -->
+        <mxCell id="backend-receive" value="&lt;b&gt;⚙️ Backend: リクエスト受信&lt;/b&gt;&lt;br&gt;&lt;br&gt;server.js: POST /api/measurements" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="264" y="430" width="300" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="backend-save-device" value="&lt;b&gt;1. device_measurements に保存&lt;/b&gt;&lt;br&gt;&lt;br&gt;saveDeviceMeasurement()" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="530" width="300" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="backend-processor" value="&lt;b&gt;2. processMeasurementWithRating()&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="264" y="630" width="300" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Forecast Retrieval -->
+        <mxCell id="forecast-get" value="&lt;b&gt;2-1. getForecastForTimestamp()&lt;/b&gt;&lt;br&gt;&lt;br&gt;① getForecastSnapshotForMeasurementTime()&lt;br&gt;   → forecast_snapshots から履歴検索&lt;br&gt;&lt;br&gt;② linearInterpolate()&lt;br&gt;   y = y1 + (y2-y1) × (x-x1)/(x2-x1)&lt;br&gt;   → 精密な予測気温計算&lt;br&gt;&lt;br&gt;matchQuality: interpolated/exact/good" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="700" width="300" height="150" as="geometry"/>
+        </mxCell>
+
+        <!-- Control State -->
+        <mxCell id="control-get" value="&lt;b&gt;2-2. getControlState(deviceId)&lt;/b&gt;&lt;br&gt;&lt;br&gt;control_states テーブルから前回状態取得:&lt;br&gt;• previousRate&lt;br&gt;• mEwma (前回のEWMA値)&lt;br&gt;• samples (サンプル配列、最大48件)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="880" width="300" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Analytics Processing -->
+        <mxCell id="analytics-start" value="&lt;b&gt;2-3. IoTProcessingEngine.processMeasurement()&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="264" y="1020" width="300" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="analytics-discrepancy" value="&lt;b&gt;DiscrepancyAnalyzer.analyzeDiscrepancy()&lt;/b&gt;&lt;br&gt;&lt;br&gt;1. absError = |forecast - observed|&lt;br&gt;&lt;br&gt;2. samples更新 (最大48件)&lt;br&gt;   samples.push(observed)&lt;br&gt;&lt;br&gt;3. sigmaDay = √variance(samples)&lt;br&gt;&lt;br&gt;4. mEwma = α×error + (1-α)×mEwma_prev&lt;br&gt;   (α = 0.3)&lt;br&gt;&lt;br&gt;5. r = mEwma / sigmaDay&lt;br&gt;&lt;br&gt;6. sErr = exp(-r)&lt;br&gt;   (0=bad, 1=good)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="1090" width="300" height="230" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="analytics-rate" value="&lt;b&gt;RateController.decideRate()&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Thresholds:&lt;/b&gt;&lt;br&gt;• sErr &lt; 0.45  → HIGH (予測不正確)&lt;br&gt;• sErr &lt; 0.70  → MEDIUM (通常)&lt;br&gt;• sErr ≥ 0.70 → LOW (予測正確)&lt;br&gt;&lt;br&gt;&lt;b&gt;Hysteresis (振動防止):&lt;/b&gt;&lt;br&gt;• HIGH → MEDIUM: sErr &gt; 0.55&lt;br&gt;• MEDIUM → LOW: sErr ≥ 0.80&lt;br&gt;&lt;br&gt;&lt;b&gt;Result:&lt;/b&gt; targetRate, reason" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="1350" width="300" height="210" as="geometry"/>
+        </mxCell>
+
+        <!-- Database Save -->
+        <mxCell id="db-save" value="&lt;b&gt;3. saveProcessedMeasurementBatch()&lt;/b&gt;&lt;br&gt;&lt;br&gt;以下のテーブルに保存:&lt;br&gt;&lt;br&gt;① processed_measurements&lt;br&gt;   (observed_c, forecast_c, abs_error,&lt;br&gt;    s_err, target_rate)&lt;br&gt;&lt;br&gt;② control_states (UPSERT)&lt;br&gt;   (target_rate, m_ewma, sigma_day,&lt;br&gt;    samples, s_err)&lt;br&gt;&lt;br&gt;③ score_logs&lt;br&gt;   (m_ewma, sigma_day, s_err, target_rate)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="1590" width="300" height="210" as="geometry"/>
+        </mxCell>
+
+        <!-- Rate to Interval Conversion -->
+        <mxCell id="interval-convert" value="&lt;b&gt;4. targetRate → intervalSeconds 変換&lt;/b&gt;&lt;br&gt;&lt;br&gt;• HIGH   → 60秒  (1分ごと)&lt;br&gt;• MEDIUM → 300秒 (5分ごと)&lt;br&gt;• LOW    → 600秒 (10分ごと)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="1830" width="300" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Response -->
+        <mxCell id="response" value="&lt;b&gt;⚙️ Backend: レスポンス返却&lt;/b&gt;&lt;br&gt;&lt;br&gt;HTTP 201 Created&lt;br&gt;{&lt;br&gt;  success: true,&lt;br&gt;  nextIntervalSeconds: 300&lt;br&gt;}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="1970" width="300" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- ESP32 Sleep -->
+        <mxCell id="esp32-sleep" value="&lt;b&gt;📡 ESP32: nextIntervalSeconds受信&lt;/b&gt;&lt;br&gt;&lt;br&gt;sleep_interval = nextIntervalSeconds&lt;br&gt;time.sleep(sleep_interval)&lt;br&gt;&lt;br&gt;→ 動的間隔でループ継続" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="264" y="2110" width="300" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Loop Arrow -->
+        <mxCell id="loop-arrow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=12;fontColor=#d79b00;dashed=1;dashPattern=8 8;" edge="1" parent="1" source="esp32-sleep" target="esp32-sensor-read">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="150" y="2165"/>
+              <mxPoint x="150" y="200"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="loop-label" value="ループ継続" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=13;fontStyle=1;fontColor=#d79b00;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="loop-arrow">
+          <mxGeometry x="-0.8" y="2" relative="1" as="geometry">
+            <mxPoint x="20" y="450" as="offset"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Arrows between steps -->
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="esp32-start" target="esp32-sensor-read">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="esp32-sensor-read" target="esp32-post">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="esp32-post" target="backend-receive">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="backend-receive" target="backend-save-device">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="backend-save-device" target="backend-processor">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="backend-processor" target="forecast-get">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="forecast-get" target="control-get">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="control-get" target="analytics-start">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="analytics-start" target="analytics-discrepancy">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="analytics-discrepancy" target="analytics-rate">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="analytics-rate" target="db-save">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="db-save" target="interval-convert">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="interval-convert" target="response">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="response" target="esp32-sleep">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Side Note: Cron Job -->
+        <mxCell id="cron-note" value="&lt;b&gt;⏰ 並行動作: Cron Job&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;予測スナップショット保存&lt;/b&gt;&lt;br&gt;毎時0分実行&lt;br&gt;&lt;br&gt;1. OpenWeatherMap API呼び出し&lt;br&gt;   → 5日間予測 (3時間間隔)&lt;br&gt;&lt;br&gt;2. forecast_snapshots に保存&lt;br&gt;   { forecastC, forecastTime,&lt;br&gt;     fullForecast[] }&lt;br&gt;&lt;br&gt;3. 古いデータクリーンアップ&lt;br&gt;   (7日以上前を削除)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="624" y="700" width="280" height="220" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

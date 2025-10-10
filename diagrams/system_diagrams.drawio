@@ -1,0 +1,428 @@
+<mxfile host="65bd71144e">
+    <diagram id="operational-flow" name="Operational Flow" compressed="false">
+        <mxGraphModel dx="735" dy="716" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="ESP32 Sensor Loop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="100" y="60" width="220" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="Read BMP280 &amp; INA219" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="100" y="150" width="220" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="Append measurement to temp.csv / elect.csv" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="90" y="240" width="240" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="WiFi connected?" style="rhombus;whiteSpace=wrap;html=1;strokeColor=#d79b00;fillColor=#fff2cc;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="130" y="340" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="Store locally and retry later" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450" parent="1" vertex="1">
+                    <mxGeometry x="10" y="460" width="220" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="POST /api/measurements" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="140" y="460" width="220" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="Sleep until next interval and restart loop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656" parent="1" vertex="1">
+                    <mxGeometry x="120" y="650" width="240" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="Render Backend (Express + Shared Modules)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;horizontal=0;startSize=30;rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f8ff;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="420" y="220" width="420" height="450" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="Validate payload &amp; persist device_measurements" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="20" vertex="1">
+                    <mxGeometry x="30" y="50" width="340" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="Fetch forecast snapshot (forecast_snapshots)" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="20" vertex="1">
+                    <mxGeometry x="30" y="130" width="340" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="IoTProcessingEngine compares forecast vs observed" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="20" vertex="1">
+                    <mxGeometry x="30" y="210" width="340" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="Update processed_measurements &amp; control_states" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#d79b00" parent="20" vertex="1">
+                    <mxGeometry x="30" y="290" width="340" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="Calculate nextIntervalSeconds and respond" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="20" vertex="1">
+                    <mxGeometry x="30" y="370" width="340" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="20" source="21" target="22" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="38" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="20" source="22" target="23" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="20" source="23" target="24" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="20" source="24" target="25" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="Render Postgres" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f8f8f8;strokeColor=#666666" parent="1" vertex="1">
+                    <mxGeometry x="880" y="340" width="140" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="2" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="3" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="4" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" value="No (offline)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontStyle=1" parent="1" source="5" target="6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" value="Yes (online)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontStyle=1" parent="1" source="5" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="6" target="9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="36" value="HTTP 201" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="8" target="21" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="41" value="nextIntervalSeconds" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontStyle=1" parent="1" source="25" target="9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="42" value="Loop" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="9" target="2" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="120" y="110" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="43" value="insert device_measurements" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="21" target="26" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="44" value="persist processed / control" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="24" target="26" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="45" value="read forecast_snapshots" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="26" target="22" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="46" value="read control state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="26" target="25" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="system-overview" name="System Overview" compressed="false">
+        <mxGraphModel dx="673" dy="657" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="Render Cloud" style="swimlane;fontStyle=1;align=center;verticalAlign=top;horizontal=0;startSize=32;rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f8ff;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="260" y="60" width="720" height="520" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="Render Backend&#xa;(Express API)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1" parent="2" vertex="1">
+                    <mxGeometry x="40" y="60" width="220" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="Render Frontend&#xa;(Static Dashboard)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" parent="2" vertex="1">
+                    <mxGeometry x="420" y="60" width="220" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="Render Postgres" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f8f8f8;strokeColor=#666666;fontStyle=1" parent="2" vertex="1">
+                    <mxGeometry x="80" y="230" width="180" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="Cron Job: Forecast Snapshot&#xa;(fetch-forecast-snapshot.js)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00" parent="2" vertex="1">
+                    <mxGeometry x="350" y="220" width="300" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="Cron Job: Historical Weather&#xa;(fetch-historical-weather.js)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00" parent="2" vertex="1">
+                    <mxGeometry x="350" y="320" width="300" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="Shared Modules&#xa;(shared/*.js)" style="rounded=1;dashed=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="2" vertex="1">
+                    <mxGeometry x="350" y="430" width="300" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="REST /api/*" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontStyle=1" parent="2" source="4" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="Measurements / control states / weather cache" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="3" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="Save forecast_snapshots" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="2" source="6" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="27" value="Upsert weather_history &amp; daily summary" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="7" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="28" value="shared analytics / persistence" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="8" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="29" value="shared modules" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="8" target="6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="shared modules" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="8" target="7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" value="Read forecast / control state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="5" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="ESP32 Sensor Node" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="40" y="260" width="200" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="User Browser" style="shape=ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="540" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="OpenWeatherMap API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="1020" y="240" width="220" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="POST /api/measurements" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontStyle=1" parent="1" source="9" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="nextIntervalSeconds" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="3" target="9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="Fetch forecast (3h cadence)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="6" target="11" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="Fetch historical (timemachine)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="7" target="11" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="31" value="CORS forecast/current (via proxy)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="4" target="11" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" value="Serve dashboard UI" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="4" target="10" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="backend-architecture" name="Backend Architecture" compressed="false">
+        <mxGraphModel dx="404" dy="394" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="Render Backend (server.js)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;horizontal=0;startSize=32;rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f8ff;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="160" y="40" width="760" height="700" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="&lt;b&gt;Express Routes&lt;/b&gt;&lt;br/&gt;/api/measurements&lt;br/&gt;/api/processed-measurements&lt;br/&gt;/api/historical&lt;br/&gt;/api/forecast/*&lt;br/&gt;/api/raw-measurements&lt;br/&gt;/api/export/*" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc" parent="2" vertex="1">
+                    <mxGeometry x="40" y="60" width="320" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="&lt;b&gt;Measurement Intake&lt;/b&gt;&lt;br/&gt;Validates payload&lt;br/&gt;Stores device_measurements&lt;br/&gt;Calls processMeasurementWithRating()" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="2" vertex="1">
+                    <mxGeometry x="40" y="230" width="320" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="&lt;b&gt;Interval Mapper&lt;/b&gt;&lt;br/&gt;RATE_INTERVAL_MAP&lt;br/&gt;HIGH=60s, MEDIUM=300s, LOW=900s" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#d79b00" parent="2" vertex="1">
+                    <mxGeometry x="40" y="370" width="320" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="&lt;b&gt;Export Service&lt;/b&gt;&lt;br/&gt;shared/export-service.js&lt;br/&gt;CSV (device, processed, control, weather)" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="2" vertex="1">
+                    <mxGeometry x="40" y="500" width="320" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="&lt;b&gt;Historical Weather&lt;/b&gt;&lt;br/&gt;shared/historical-weather.js&lt;br/&gt;OneCall timemachine client&lt;br/&gt;Daily stats + persistence" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="2" vertex="1">
+                    <mxGeometry x="400" y="60" width="320" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="&lt;b&gt;Measurement Processor&lt;/b&gt;&lt;br/&gt;shared/measurement-processor.js&lt;br/&gt;Coordinates weather lookup, analytics, persistence" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="2" vertex="1">
+                    <mxGeometry x="400" y="210" width="320" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="&lt;b&gt;Analytics Engine&lt;/b&gt;&lt;br/&gt;shared/analytics-service.js&lt;br/&gt;IoTProcessingEngine &amp; RateController&lt;br/&gt;EWMA, sigma, hysteresis" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="2" vertex="1">
+                    <mxGeometry x="400" y="330" width="320" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="&lt;b&gt;Weather Service&lt;/b&gt;&lt;br/&gt;shared/weather-service.js&lt;br/&gt;Reads forecast_snapshots&lt;br/&gt;Interpolation by timestamp&lt;br/&gt;Freshness logging" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="2" vertex="1">
+                    <mxGeometry x="400" y="450" width="320" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="&lt;b&gt;Persistence Layer&lt;/b&gt;&lt;br/&gt;shared/persistence.js + db.js&lt;br/&gt;SQL helpers for all tables&lt;br/&gt;initSchema ensures schema" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="2" vertex="1">
+                    <mxGeometry x="400" y="570" width="320" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="Route dispatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="3" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="processMeasurementWithRating" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="4" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="IoTProcessingEngine decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="5" target="6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="Target rate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="6" target="11" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="Interval response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="11" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="Forecast lookup" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="7" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="27" value="Persist processed_measurements / control_states" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="6" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="28" value="Read forecast_snapshots" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="7" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="29" value="/api/historical" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="3" target="10" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="Persist weather_history / summary" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="10" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="31" value="/api/export/*" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="3" target="9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" value="CSV queries" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="2" source="9" target="8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="Render Postgres" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#f8f8f8;strokeColor=#666666;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="970" y="280" width="180" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="OpenWeatherMap API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="970" y="120" width="220" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="Render Cron Jobs&lt;br/&gt;Forecast snapshot + historical fetch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00" parent="1" vertex="1">
+                    <mxGeometry x="970" y="480" width="220" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" value="ESP32 Device" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="40" y="260" width="140" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="/api/measurements" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontStyle=1" parent="1" source="15" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" value="SQL read/write" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontStyle=1" parent="1" source="8" target="12" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" value="Forecast snapshots / control states" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="12" target="7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" value="Interval lookup" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="12" target="11" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="36" value="HTTP fetch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="14" target="13" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="37" value="Persist snapshots &amp; weather" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="14" target="12" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="38" value="nextIntervalSeconds" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none" parent="1" source="4" target="15" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="frontend-architecture" name="Frontend Architecture" compressed="false">
+        <mxGraphModel dx="404" dy="394" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="Backend API (Render Express)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="40" y="230" width="200" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="backend-service.js&lt;br/&gt;Builds REST URLs / retries&lt;br/&gt;recent measurements, control state" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="280" y="210" width="240" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="dashboard.js&lt;br/&gt;Initialises UI + charts&lt;br/&gt;Wires events / state updates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="560" y="210" width="250" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="realtime-processor.js&lt;br/&gt;Polls raw measurements&lt;br/&gt;Runs IoTProcessingEngine&lt;br/&gt;Saves processed batches" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="280" y="370" width="260" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="weather-service.js&lt;br/&gt;Direct OpenWeather (proxy)&lt;br/&gt;/api/historical via backend&lt;br/&gt;30min cache" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="1" vertex="1">
+                    <mxGeometry x="560" y="80" width="250" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="analytics-engine.js&lt;br/&gt;RateLevel enum / IoTProcessingEngine duplicate&lt;br/&gt;Shared with realtime processor" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="1" vertex="1">
+                    <mxGeometry x="840" y="220" width="260" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="export-manager.js&lt;br/&gt;Generate CSV from dashboard state" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="1" vertex="1">
+                    <mxGeometry x="560" y="380" width="250" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="app-config.js&lt;br/&gt;API base URL&lt;br/&gt;Weather lat/lon&lt;br/&gt;Control thresholds" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#d79b00" parent="1" vertex="1">
+                    <mxGeometry x="560" y="520" width="250" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="UI Libraries&lt;br/&gt;Tailwind CDN + Chart.js + chartjs-plugin-zoom" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#9673a6;fillColor=#e1d5e7" parent="1" vertex="1">
+                    <mxGeometry x="560" width="250" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="OpenWeatherMap API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1" parent="1" vertex="1">
+                    <mxGeometry x="840" y="60" width="260" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="REST /api/* requests" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontStyle=1" parent="1" source="3" target="2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="Promise data (measurements, control states)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="3" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="Fetch weather &amp; historical" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="6" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="CORS forecast/current" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="6" target="11" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="/api/historical" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="6" target="2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="Poll raw measurements / POST processed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="5" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="Realtime updates (UI patches)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="5" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="27" value="IoTProcessingEngine / RateLevel" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="5" target="7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="28" value="RateLevel enums / analytics helpers" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="4" target="7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="29" value="CSV export trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="8" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="Shared config" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="9" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="31" value="Shared config" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="9" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" value="Shared config" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="9" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" value="Shared config" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="9" target="6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" value="Style / chart components" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="10" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="database-schema" name="Database Schema" compressed="false">
+        <mxGraphModel dx="404" dy="394" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" background="#FFFFFF" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="&lt;b&gt;device_measurements&lt;/b&gt;&lt;br/&gt;- id SERIAL PK&lt;br/&gt;- device_id TEXT&lt;br/&gt;- temperature NUMERIC&lt;br/&gt;- humidity NUMERIC&lt;br/&gt;- recorded_at TIMESTAMPTZ&lt;br/&gt;- payload JSONB&lt;br/&gt;- created_at TIMESTAMPTZ" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc" parent="1" vertex="1">
+                    <mxGeometry x="40" y="60" width="260" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="&lt;b&gt;processed_measurements&lt;/b&gt;&lt;br/&gt;- id SERIAL PK&lt;br/&gt;- node_id TEXT&lt;br/&gt;- observed_c NUMERIC&lt;br/&gt;- forecast_c NUMERIC&lt;br/&gt;- abs_error NUMERIC&lt;br/&gt;- battery_v NUMERIC&lt;br/&gt;- s_err NUMERIC&lt;br/&gt;- target_rate TEXT&lt;br/&gt;- recorded_at TIMESTAMPTZ&lt;br/&gt;- created_at TIMESTAMPTZ" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366;fillColor=#d5e8d4" parent="1" vertex="1">
+                    <mxGeometry x="340" y="60" width="280" height="220" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="&lt;b&gt;control_states&lt;/b&gt;&lt;br/&gt;- node_id TEXT PK&lt;br/&gt;- target_rate TEXT&lt;br/&gt;- previous_rate TEXT&lt;br/&gt;- m_ewma NUMERIC&lt;br/&gt;- sigma_day NUMERIC&lt;br/&gt;- samples JSONB&lt;br/&gt;- s_err NUMERIC&lt;br/&gt;- last_observed_c NUMERIC&lt;br/&gt;- last_forecast_c NUMERIC&lt;br/&gt;- last_updated_at TIMESTAMPTZ&lt;br/&gt;- reason TEXT&lt;br/&gt;- mode TEXT&lt;br/&gt;- updated_at TIMESTAMPTZ" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#d79b00;fillColor=#fff2cc" parent="1" vertex="1">
+                    <mxGeometry x="660" y="60" width="300" height="240" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="&lt;b&gt;score_logs&lt;/b&gt;&lt;br/&gt;- id SERIAL PK&lt;br/&gt;- node_id TEXT&lt;br/&gt;- m_ewma NUMERIC&lt;br/&gt;- sigma_day NUMERIC&lt;br/&gt;- s_err NUMERIC&lt;br/&gt;- target_rate TEXT&lt;br/&gt;- created_at TIMESTAMPTZ" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#82b366" parent="1" vertex="1">
+                    <mxGeometry x="660" y="320" width="300" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="&lt;b&gt;raw_measurements&lt;/b&gt;&lt;br/&gt;- id SERIAL PK&lt;br/&gt;- device_id TEXT&lt;br/&gt;- payload JSONB&lt;br/&gt;- received_at TIMESTAMPTZ" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="40" y="320" width="260" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="&lt;b&gt;forecast_snapshots&lt;/b&gt;&lt;br/&gt;- id SERIAL PK&lt;br/&gt;- snapshot JSONB&lt;br/&gt;- fetched_at TIMESTAMPTZ" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#b85450;fillColor=#f8cecc" parent="1" vertex="1">
+                    <mxGeometry x="340" y="320" width="280" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="&lt;b&gt;weather_history&lt;/b&gt;&lt;br/&gt;- date DATE PK (part)&lt;br/&gt;- hour SMALLINT PK (part)&lt;br/&gt;- payload JSONB&lt;br/&gt;- created_at TIMESTAMPTZ" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="340" y="500" width="280" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="&lt;b&gt;weather_daily_summary&lt;/b&gt;&lt;br/&gt;- date DATE PK&lt;br/&gt;- summary JSONB&lt;br/&gt;- generated_at TIMESTAMPTZ" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#6c8ebf" parent="1" vertex="1">
+                    <mxGeometry x="660" y="520" width="300" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="device_id ≈ node_id (logical)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="2" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="node_id" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontStyle=1" parent="1" source="3" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="node_id history" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="5" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="processed from raw queue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="6" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="forecast for measurement timestamp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="7" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="informs control state" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="7" target="4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="daily summary" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;startArrow=none;fontSize=11" parent="1" source="8" target="9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

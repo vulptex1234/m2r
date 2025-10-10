@@ -1,0 +1,124 @@
+<mxfile host="app.diagrams.net" agent="Claude Code" version="24.0.0">
+  <diagram name="ESP32 Architecture" id="esp32-arch">
+    <mxGraphModel dx="1422" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1400">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="ESP32 IoT Device Architecture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="500" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Hardware Section -->
+        <mxCell id="hw-container" value="&lt;b&gt;ハードウェア構成&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=16;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="480" height="360" as="geometry"/>
+        </mxCell>
+
+        <!-- ESP32 Board -->
+        <mxCell id="esp32-board" value="&lt;b&gt;ESP32 DevKit C&lt;/b&gt;&lt;br&gt;&lt;br&gt;• CPU: Dual-core Xtensa LX6&lt;br&gt;• Clock: 240MHz&lt;br&gt;• WiFi: 802.11 b/g/n&lt;br&gt;• RAM: 520KB SRAM&lt;br&gt;• Flash: 4MB" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="120" width="220" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- I2C Bus -->
+        <mxCell id="i2c-bus" value="&lt;b&gt;I2C Bus&lt;/b&gt;&lt;br&gt;&lt;br&gt;• SCL: GPIO 22&lt;br&gt;• SDA: GPIO 21&lt;br&gt;• Frequency: 100kHz&lt;br&gt;  (低速設定で安定性向上)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="340" y="120" width="200" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- Sensors -->
+        <mxCell id="bmp280" value="&lt;b&gt;BMP280&lt;/b&gt;&lt;br&gt;&lt;br&gt;• I2C Address: 0x76/0x77&lt;br&gt;• 温度センサー&lt;br&gt;• 湿度センサー&lt;br&gt;• 気圧センサー" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="270" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ina219" value="&lt;b&gt;INA219&lt;/b&gt;&lt;br&gt;&lt;br&gt;• I2C Address: 0x40-0x45&lt;br&gt;• 電圧センサー (V)&lt;br&gt;• 電流センサー (mA)&lt;br&gt;• 電力計算 (mW)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="320" y="270" width="200" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- LED -->
+        <mxCell id="led" value="&lt;b&gt;Status LED (Blue)&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Pin: GPIO 2&lt;br&gt;• ON: 測定中&lt;br&gt;• Rapid blink: 送信中&lt;br&gt;• Slow blink: 成功&lt;br&gt;• OFF: スリープ中" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="390" width="420" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Software Section -->
+        <mxCell id="sw-container" value="&lt;b&gt;ソフトウェア構成 (MicroPython)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="600" y="80" width="520" height="740" as="geometry"/>
+        </mxCell>
+
+        <!-- boot.py -->
+        <mxCell id="boot-py" value="&lt;b&gt;boot.py (517行) - メインプログラム&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;align=center;verticalAlign=top;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="620" y="120" width="480" height="680" as="geometry"/>
+        </mxCell>
+
+        <!-- Initialization -->
+        <mxCell id="init-section" value="&lt;b&gt;1. 初期化&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="150" width="440" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="init-content" value="• WiFi設定読み込み (passwords.py)&lt;br&gt;  - HOME_WIFI_SSID / HOME_WIFI_PASS&lt;br&gt;  - LAB_WIFI_SSID / LAB_WIFI_PASS&lt;br&gt;  - WIFI_MODE: 'HOME' or 'LAB'&lt;br&gt;&lt;br&gt;• CSV初期化&lt;br&gt;  - temp.csv (timestamp, temp, pressure, humidity)&lt;br&gt;  - elect.csv (timestamp, voltage, current, power)&lt;br&gt;  - debug.log (タイムスタンプ付きログ)&lt;br&gt;&lt;br&gt;• WiFi接続 (最大20秒リトライ)&lt;br&gt;&lt;br&gt;• I2Cバス初期化 (100kHz)&lt;br&gt;• I2Cデバイススキャン (診断)&lt;br&gt;• BMP280初期化&lt;br&gt;• INA219初期化 (最大5回リトライ)&lt;br&gt;• 青色LED初期化 (GPIO 2)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="640" y="175" width="440" height="235" as="geometry"/>
+        </mxCell>
+
+        <!-- Main Loop -->
+        <mxCell id="loop-section" value="&lt;b&gt;2. メインループ (while True)&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="420" width="440" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="loop-content" value="&lt;b&gt;Step 1: センサー読み取り&lt;/b&gt;&lt;br&gt;• BMP280: temperature, pressure, humidity&lt;br&gt;• INA219: voltage, current, power&lt;br&gt;• CSV保存 (temp.csv, elect.csv)&lt;br&gt;&lt;br&gt;&lt;b&gt;Step 2: HTTP POST送信&lt;/b&gt;&lt;br&gt;URL: https://m2r.onrender.com/api/measurements&lt;br&gt;Payload: {&lt;br&gt;  deviceId: &quot;ESP32-001&quot;,&lt;br&gt;  temperature: 23.5,&lt;br&gt;  humidity: 45.2,&lt;br&gt;  recordedAt: null,&lt;br&gt;  payload: {&lt;br&gt;    voltage_v: 3.3,&lt;br&gt;    current_ma: 120.5,&lt;br&gt;    power_mw: 397.65&lt;br&gt;  }&lt;br&gt;}&lt;br&gt;&lt;br&gt;&lt;b&gt;Step 3: レスポンス解析&lt;/b&gt;&lt;br&gt;response_data.get('nextIntervalSeconds', 300)&lt;br&gt;&lt;br&gt;&lt;b&gt;Step 4: 動的スリープ&lt;/b&gt;&lt;br&gt;time.sleep(nextIntervalSeconds)&lt;br&gt;• HIGH rate   → 60s  (1分ごと)&lt;br&gt;• MEDIUM rate → 300s (5分ごと)&lt;br&gt;• LOW rate    → 600s (10分ごと)&lt;br&gt;• Default     → 300s (エラー時)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="640" y="445" width="440" height="345" as="geometry"/>
+        </mxCell>
+
+        <!-- Error Handling -->
+        <mxCell id="error-container" value="&lt;b&gt;エラーハンドリング&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="480" width="480" height="340" as="geometry"/>
+        </mxCell>
+
+        <!-- Error strategies -->
+        <mxCell id="error-wifi" value="&lt;b&gt;WiFi接続エラー&lt;/b&gt;&lt;br&gt;&lt;br&gt;• 最大3回リトライ&lt;br&gt;• Exponential backoff (2s, 4s, 6s)&lt;br&gt;• 失敗時: ローカル保存のみ継続" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="520" width="440" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="error-sensor" value="&lt;b&gt;センサー読み取りエラー&lt;/b&gt;&lt;br&gt;&lt;br&gt;• BMP280エラー → CSVに&quot;ERROR&quot;を記録&lt;br&gt;• INA219エラー → CSVに&quot;ERROR&quot;を記録&lt;br&gt;• データ送信スキップ、次のループへ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="610" width="440" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="error-api" value="&lt;b&gt;API送信エラー&lt;/b&gt;&lt;br&gt;&lt;br&gt;• 最大3回リトライ (Exponential backoff)&lt;br&gt;• 失敗時: デフォルト間隔300秒でスリープ&lt;br&gt;• ローカルCSVにはデータ保存済み" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="710" width="440" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Supporting Files -->
+        <mxCell id="support-container" value="&lt;b&gt;サポートモジュール&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="860" width="1040" height="140" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="bmp280-py" value="&lt;b&gt;bmp280.py&lt;/b&gt;&lt;br&gt;&lt;br&gt;• BME280 class&lt;br&gt;• I2C通信&lt;br&gt;• 温度・湿度・気圧読み取り" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="900" width="240" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ina219-py" value="&lt;b&gt;ina219.py&lt;/b&gt;&lt;br&gt;&lt;br&gt;• INA219 class&lt;br&gt;• I2C通信&lt;br&gt;• 電圧・電流・電力読み取り" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="360" y="900" width="240" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="passwords-py" value="&lt;b&gt;passwords.py&lt;/b&gt;&lt;br&gt;(not in repo)&lt;br&gt;&lt;br&gt;• HOME_WIFI_SSID&lt;br&gt;• HOME_WIFI_PASS&lt;br&gt;• LAB_WIFI_SSID&lt;br&gt;• LAB_WIFI_PASS&lt;br&gt;• WIFI_MODE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="620" y="900" width="240" height="90" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="dependencies" value="&lt;b&gt;Dependencies&lt;/b&gt;&lt;br&gt;&lt;br&gt;• urequests (HTTP client)&lt;br&gt;  mpremote mip install urequests&lt;br&gt;• ujson (built-in)&lt;br&gt;• network (built-in)&lt;br&gt;• machine (built-in)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="880" y="900" width="220" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- Data Flow -->
+        <mxCell id="flow-container" value="&lt;b&gt;データフロー&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=16;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1040" width="1040" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="flow-content" value="&lt;b&gt;ローカル保存:&lt;/b&gt;&lt;br&gt;Sensors → temp.csv / elect.csv (タイムスタンプ付き)&lt;br&gt;&lt;br&gt;&lt;b&gt;リモート送信:&lt;/b&gt;&lt;br&gt;Sensors → WiFi → HTTPS POST → Render Backend → Database&lt;br&gt;Backend → Response { nextIntervalSeconds } → ESP32 dynamic sleep&lt;br&gt;&lt;br&gt;&lt;b&gt;ループ継続:&lt;/b&gt;&lt;br&gt;sleep(nextIntervalSeconds) → センサー読み取り → ... (繰り返し)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1080" width="1000" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Deployment -->
+        <mxCell id="deploy-section" value="&lt;b&gt;デプロイ&lt;/b&gt;&lt;br&gt;&lt;br&gt;1. Create passwords.py with WiFi credentials&lt;br&gt;2. Install urequests: mpremote mip install urequests&lt;br&gt;3. Copy files to ESP32: boot.py, bmp280.py, ina219.py, passwords.py&lt;br&gt;4. Connect sensors to I2C (SCL=22, SDA=21)&lt;br&gt;5. Power on → Auto-run boot.py" style="text;html=1;strokeColor=#d6b656;fillColor=#fff2cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1240" width="1040" height="120" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

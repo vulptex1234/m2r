@@ -1,0 +1,143 @@
+<mxfile host="app.diagrams.net" agent="Claude Code" version="24.0.0">
+  <diagram name="Overall System Architecture" id="overall-arch">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="ESP32 IoT 温度制御システム - 全体構成図" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="284.5" y="30" width="600" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- User/Browser -->
+        <mxCell id="user" value="&lt;b&gt;👤 User (Web Browser)&lt;/b&gt;&lt;br&gt;&lt;br&gt;https://m2r.onrender.com" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="100" width="240" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Frontend Container -->
+        <mxCell id="frontend-container" value="&lt;b&gt;🖥️ Frontend (Render Static Site)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="240" width="240" height="200" as="geometry"/>
+        </mxCell>
+        <mxCell id="frontend-content" value="• HTML/CSS (Tailwind)&lt;br&gt;• JavaScript (ES6 modules)&lt;br&gt;• Chart.js (3つのグラフ)&lt;br&gt;&lt;br&gt;Files:&lt;br&gt;• public/index.html&lt;br&gt;• public/js/dashboard.js&lt;br&gt;• public/js/backend-service.js&lt;br&gt;• public/js/weather-service.js" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="270" width="220" height="160" as="geometry"/>
+        </mxCell>
+
+        <!-- Backend Container -->
+        <mxCell id="backend-container" value="&lt;b&gt;⚙️ Backend (Render Web Service)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="400" y="100" width="320" height="340" as="geometry"/>
+        </mxCell>
+        <mxCell id="backend-content" value="&lt;b&gt;Node.js + Express.js&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;API Endpoints (25個):&lt;/b&gt;&lt;br&gt;• POST /api/measurements&lt;br&gt;• GET /api/processed-measurements&lt;br&gt;• GET /api/historical&lt;br&gt;• GET /api/forecast-snapshots&lt;br&gt;• GET /api/score-logs&lt;br&gt;• DELETE /api/measurements&lt;br&gt;• ... 他19個&lt;br&gt;&lt;br&gt;&lt;b&gt;Core Modules:&lt;/b&gt;&lt;br&gt;• analytics-service.js&lt;br&gt;  - DiscrepancyAnalyzer&lt;br&gt;  - RateController&lt;br&gt;  - IoTProcessingEngine&lt;br&gt;• measurement-processor.js&lt;br&gt;• weather-service.js&lt;br&gt;• persistence.js&lt;br&gt;• historical-weather.js&lt;br&gt;• db.js" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="410" y="130" width="300" height="300" as="geometry"/>
+        </mxCell>
+
+        <!-- Database Container -->
+        <mxCell id="database-container" value="&lt;b&gt;🗄️ Database (Render PostgreSQL)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="800" y="100" width="280" height="260" as="geometry"/>
+        </mxCell>
+        <mxCell id="database-content" value="&lt;b&gt;Tables (8個):&lt;/b&gt;&lt;br&gt;&lt;br&gt;1️⃣ device_measurements&lt;br&gt;   ESP32からの生データ&lt;br&gt;&lt;br&gt;2️⃣ processed_measurements&lt;br&gt;   レート判定後の処理結果&lt;br&gt;&lt;br&gt;3️⃣ control_states&lt;br&gt;   デバイスごとの現在状態&lt;br&gt;&lt;br&gt;4️⃣ score_logs&lt;br&gt;   スコア計算履歴&lt;br&gt;&lt;br&gt;5️⃣ forecast_snapshots&lt;br&gt;   予測データスナップショット&lt;br&gt;&lt;br&gt;6️⃣ weather_history&lt;br&gt;7️⃣ weather_daily_summary&lt;br&gt;8️⃣ raw_measurements" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="810" y="130" width="260" height="220" as="geometry"/>
+        </mxCell>
+
+        <!-- Cron Jobs Container -->
+        <mxCell id="cron-container" value="&lt;b&gt;⏰ Cron Jobs (Render)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="800" y="400" width="280" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="cron-content" value="&lt;b&gt;Job 1: 予測スナップショット&lt;/b&gt;&lt;br&gt;Schedule: 毎時0分 (0 * * * *)&lt;br&gt;File: fetch-forecast-snapshot.js&lt;br&gt;&lt;br&gt;&lt;b&gt;Job 2: 過去天気データ&lt;/b&gt;&lt;br&gt;Schedule: 日次22:00 UTC&lt;br&gt;File: fetch-historical-weather.js" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="810" y="430" width="260" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ESP32 Container -->
+        <mxCell id="esp32-container" value="&lt;b&gt;📡 ESP32 (IoT Device)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="520" width="240" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="esp32-content" value="&lt;b&gt;MicroPython (boot.py)&lt;/b&gt;&lt;br&gt;&lt;br&gt;Sensors:&lt;br&gt;• BMP280 (温度・湿度)&lt;br&gt;  I2C: 0x76/0x77&lt;br&gt;• INA219 (電圧・電流)&lt;br&gt;  I2C: 0x40-0x45&lt;br&gt;&lt;br&gt;動的送信間隔制御:&lt;br&gt;• HIGH: 60s (1分)&lt;br&gt;• MEDIUM: 300s (5分)&lt;br&gt;• LOW: 600s (10分)&lt;br&gt;&lt;br&gt;WiFi: HOME/LAB mode" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="90" y="550" width="220" height="140" as="geometry"/>
+        </mxCell>
+
+        <!-- External API Container -->
+        <mxCell id="external-api-container" value="&lt;b&gt;🌐 External API&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="800" y="560" width="280" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="external-api-content" value="&lt;b&gt;OpenWeatherMap API&lt;/b&gt;&lt;br&gt;&lt;br&gt;Endpoints:&lt;br&gt;• /data/2.5/forecast&lt;br&gt;  5日間予測 (3時間間隔)&lt;br&gt;&lt;br&gt;• /data/3.0/onecall/timemachine&lt;br&gt;  過去天気データ&lt;br&gt;&lt;br&gt;Location:&lt;br&gt;• lat: 35.656&lt;br&gt;• lon: 139.324" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="810" y="590" width="260" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrows -->
+        <!-- User to Frontend -->
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;fontColor=#000000;" edge="1" parent="1" source="user" target="frontend-container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow1-label" value="HTTPS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1" vertex="1" connectable="0" parent="arrow1">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint as="offset"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Frontend to Backend -->
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;fontColor=#000000;" edge="1" parent="1" source="frontend-container" target="backend-container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow2-label" value="REST API&lt;br&gt;(JSON)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1" vertex="1" connectable="0" parent="arrow2">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="5" y="-10" as="offset"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Backend to Database -->
+        <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;fontColor=#000000;" edge="1" parent="1" source="backend-container" target="database-container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow3-label" value="PostgreSQL&lt;br&gt;Connection" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1" vertex="1" connectable="0" parent="arrow3">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="5" as="offset"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ESP32 to Backend -->
+        <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;fontColor=#000000;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="esp32-container" target="backend-container">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="360" y="610"/>
+              <mxPoint x="360" y="355"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="arrow4-label" value="HTTP POST&lt;br&gt;/api/measurements&lt;br&gt;(WiFi)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="arrow4">
+          <mxGeometry x="-0.5" y="2" relative="1" as="geometry">
+            <mxPoint x="-2" y="-25" as="offset"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Cron to Database -->
+        <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;fontColor=#000000;" edge="1" parent="1" source="cron-container" target="database-container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow5-label" value="Write&lt;br&gt;Snapshots" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1" vertex="1" connectable="0" parent="arrow5">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="15" as="offset"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Cron to External API -->
+        <mxCell id="arrow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;fontColor=#000000;" edge="1" parent="1" source="cron-container" target="external-api-container">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow6-label" value="HTTP GET&lt;br&gt;(毎時/日次)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontStyle=1" vertex="1" connectable="0" parent="arrow6">
+          <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+            <mxPoint x="15" as="offset"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Data Flow Legend -->
+        <mxCell id="legend-container" value="&lt;b&gt;📊 主要データフロー&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="400" y="480" width="320" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend-content" value="1️⃣ ESP32センサー読み取り&lt;br&gt;   ↓ POST /api/measurements&lt;br&gt;&lt;br&gt;2️⃣ Backend レート判定実行&lt;br&gt;   • getForecastForTimestamp()&lt;br&gt;   • IoTProcessingEngine.process()&lt;br&gt;   ↓ nextIntervalSeconds返却&lt;br&gt;&lt;br&gt;3️⃣ Database 保存&lt;br&gt;   • device_measurements&lt;br&gt;   • processed_measurements&lt;br&gt;   • control_states&lt;br&gt;   • score_logs&lt;br&gt;&lt;br&gt;4️⃣ Frontend データ取得&lt;br&gt;   • 30秒ごと自動更新&lt;br&gt;   • Chart.js でグラフ描画" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="410" y="510" width="300" height="180" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,159 @@
+<mxfile host="app.diagrams.net" agent="Claude Code" version="24.0.0">
+  <diagram name="Backend Architecture" id="backend-arch">
+    <mxGraphModel dx="1422" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1600">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="Backend Architecture (Node.js + Express.js)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="700" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Main Container -->
+        <mxCell id="main-container" value="&lt;b&gt;web-service/src/server.js (817行)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="1240" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- API Endpoints Section -->
+        <mxCell id="api-section" value="&lt;b&gt;API Endpoints (25個)&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="120" width="580" height="640" as="geometry"/>
+        </mxCell>
+
+        <!-- Health Check -->
+        <mxCell id="api1" value="&lt;b&gt;GET /health&lt;/b&gt;&lt;br&gt;Health check endpoint" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="150" width="540" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ESP32 Data -->
+        <mxCell id="api-esp32-header" value="&lt;b&gt;📡 ESP32データ受信&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="120" y="195" width="540" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="api2" value="&lt;b&gt;POST /api/measurements&lt;/b&gt;&lt;br&gt;ESP32からのデータ受信 + レート判定実行&lt;br&gt;→ processMeasurementWithRating()" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="220" width="540" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="api3" value="&lt;b&gt;GET /api/measurements&lt;/b&gt;&lt;br&gt;device_measurementsテーブルから取得 (?limit=N)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="280" width="540" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Processed Measurements -->
+        <mxCell id="api-processed-header" value="&lt;b&gt;📊 処理済みデータ&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="120" y="330" width="540" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="api4" value="&lt;b&gt;GET /api/processed-measurements&lt;/b&gt;&lt;br&gt;レート判定結果取得 (?limit=N, ?nodeId=...)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="355" width="540" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="api5" value="&lt;b&gt;POST /api/processed-measurements&lt;/b&gt;&lt;br&gt;処理結果の手動登録 (テスト用)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="405" width="540" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="api6" value="&lt;b&gt;POST /api/processed-measurements/cleanup&lt;/b&gt;&lt;br&gt;古いデータのクリーンアップ" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="455" width="540" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Score Logs & Control States -->
+        <mxCell id="api-score-header" value="&lt;b&gt;📈 スコアログ・制御状態&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="120" y="505" width="540" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="api7" value="&lt;b&gt;GET /api/score-logs&lt;/b&gt;&lt;br&gt;スコア計算履歴取得 (?limit=N)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="530" width="540" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="api8" value="&lt;b&gt;GET /api/control-states/:nodeId&lt;/b&gt;&lt;br&gt;デバイスの現在状態取得" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="580" width="540" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Historical Weather -->
+        <mxCell id="api-weather-header" value="&lt;b&gt;🌤️ 天気データ&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="120" y="630" width="540" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="api9" value="&lt;b&gt;GET /api/historical&lt;/b&gt;&lt;br&gt;過去天気データ取得 (?date=YYYY-MM-DD)&lt;br&gt;→ 30分以上古ければ自動更新" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="655" width="540" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Forecast Snapshots -->
+        <mxCell id="api10" value="&lt;b&gt;POST /api/forecast/snapshot&lt;/b&gt;&lt;br&gt;予測スナップショット保存 (フロントエンドからは無効)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="120" y="715" width="540" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Shared Modules Section -->
+        <mxCell id="shared-section" value="&lt;b&gt;shared/ モジュール&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="720" y="120" width="580" height="640" as="geometry"/>
+        </mxCell>
+
+        <!-- analytics-service.js -->
+        <mxCell id="module1" value="&lt;b&gt;analytics-service.js (311行)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="740" y="150" width="540" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="module1-content" value="&lt;b&gt;Classes:&lt;/b&gt;&lt;br&gt;• DiscrepancyAnalyzer&lt;br&gt;  - analyzeDiscrepancy() (誤差分析)&lt;br&gt;  - updateEwma() (EWMA更新)&lt;br&gt;  - computeSigmaDay() (標準偏差計算)&lt;br&gt;• RateController&lt;br&gt;  - decideRate() (レート判定)&lt;br&gt;• IoTProcessingEngine&lt;br&gt;  - processMeasurement() (統合処理)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="750" y="180" width="520" height="90" as="geometry"/>
+        </mxCell>
+
+        <!-- measurement-processor.js -->
+        <mxCell id="module2" value="&lt;b&gt;measurement-processor.js (227行)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="740" y="300" width="540" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="module2-content" value="&lt;b&gt;Functions:&lt;/b&gt;&lt;br&gt;• processMeasurementWithRating()&lt;br&gt;  メイン処理パイプライン&lt;br&gt;• canProcessMeasurement() (バリデーション)&lt;br&gt;• processMeasurementBatch() (バッチ処理)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="750" y="330" width="520" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- weather-service.js -->
+        <mxCell id="module3" value="&lt;b&gt;weather-service.js (345行)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="740" y="420" width="540" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="module3-content" value="&lt;b&gt;Functions:&lt;/b&gt;&lt;br&gt;• getForecastForTimestamp()&lt;br&gt;  タイムスタンプマッチング + 線形補間&lt;br&gt;• linearInterpolate() (線形補間計算)&lt;br&gt;• getCachedForecast() (キャッシュ取得)&lt;br&gt;• evaluateCacheFreshness() (鮮度評価)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="750" y="450" width="520" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- persistence.js -->
+        <mxCell id="module4" value="&lt;b&gt;persistence.js&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="740" y="560" width="540" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="module4-content" value="&lt;b&gt;Functions:&lt;/b&gt;&lt;br&gt;• saveDeviceMeasurement() / getDeviceMeasurements()&lt;br&gt;• saveProcessedMeasurementBatch() / getProcessedMeasurements()&lt;br&gt;• getControlState() / getForecastSnapshotForMeasurementTime()&lt;br&gt;• getRecentScoreLogs() / getRecentForecastSnapshots()" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="750" y="590" width="520" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- db.js -->
+        <mxCell id="module5" value="&lt;b&gt;db.js (157行)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="740" y="680" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="module5-content" value="&lt;b&gt;Functions:&lt;/b&gt;&lt;br&gt;• getPool() (接続プール)&lt;br&gt;• initSchema() (テーブル作成)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="750" y="710" width="240" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- historical-weather.js -->
+        <mxCell id="module6" value="&lt;b&gt;historical-weather.js&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="680" width="260" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="module6-content" value="&lt;b&gt;Functions:&lt;/b&gt;&lt;br&gt;• fetchHistoricalByDate()&lt;br&gt;• calculateDailyStats()" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="710" width="240" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Environment Variables -->
+        <mxCell id="env-section" value="&lt;b&gt;環境変数&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="820" width="400" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="env-content" value="• DATABASE_URL&lt;br&gt;  PostgreSQL接続文字列&lt;br&gt;&lt;br&gt;• PGSSLMODE=require&lt;br&gt;  SSL接続必須&lt;br&gt;&lt;br&gt;• OPENWEATHER_API_KEY&lt;br&gt;  OpenWeatherMap API Key&lt;br&gt;&lt;br&gt;• PORT=3000&lt;br&gt;  サーバーポート" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="100" y="850" width="360" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Processing Pipeline -->
+        <mxCell id="pipeline-section" value="&lt;b&gt;処理パイプライン (POST /api/measurements)&lt;/b&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="520" y="820" width="800" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="pipeline-content" value="&lt;b&gt;1. データ受信 (server.js)&lt;/b&gt;&lt;br&gt;   req.body → { deviceId, temperature, humidity, voltage, current, power }&lt;br&gt;&lt;br&gt;&lt;b&gt;2. 生データ保存 (persistence.js)&lt;/b&gt;&lt;br&gt;   saveDeviceMeasurement() → device_measurements テーブル&lt;br&gt;&lt;br&gt;&lt;b&gt;3. レート判定実行 (measurement-processor.js)&lt;/b&gt;&lt;br&gt;   processMeasurementWithRating()&lt;br&gt;   ├─ getForecastForTimestamp() (weather-service.js)&lt;br&gt;   │  ├─ getForecastSnapshotForMeasurementTime()&lt;br&gt;   │  └─ linearInterpolate()&lt;br&gt;   ├─ getControlState() (persistence.js)&lt;br&gt;   └─ IoTProcessingEngine.processMeasurement() (analytics-service.js)&lt;br&gt;      ├─ DiscrepancyAnalyzer.analyzeDiscrepancy()&lt;br&gt;      └─ RateController.decideRate()&lt;br&gt;&lt;br&gt;&lt;b&gt;4. 結果保存 (persistence.js)&lt;/b&gt;&lt;br&gt;   saveProcessedMeasurementBatch()&lt;br&gt;   ├─ processed_measurements テーブル&lt;br&gt;   ├─ control_states テーブル (UPSERT)&lt;br&gt;   └─ score_logs テーブル&lt;br&gt;&lt;br&gt;&lt;b&gt;5. レスポンス返却 (server.js)&lt;/b&gt;&lt;br&gt;   targetRate → intervalSeconds 変換&lt;br&gt;   → { success: true, nextIntervalSeconds: 300 }" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="540" y="850" width="760" height="260" as="geometry"/>
+        </mxCell>
+
+        <!-- Additional Endpoints List -->
+        <mxCell id="more-endpoints" value="&lt;b&gt;その他のエンドポイント (19個):&lt;/b&gt;&lt;br&gt;&lt;br&gt;• GET /api/forecast/snapshot (最新予測)&lt;br&gt;• GET /api/forecast-snapshots (予測履歴)&lt;br&gt;• POST /api/raw-measurements (テストデータ)&lt;br&gt;• GET /api/raw-measurements&lt;br&gt;• DELETE /api/raw-measurements/:id&lt;br&gt;• GET /api/system-health&lt;br&gt;• DELETE /api/measurements (データ削除)&lt;br&gt;• DELETE /api/historical (履歴削除)&lt;br&gt;• DELETE /api/all-data (全削除)&lt;br&gt;• GET /api/export/device-measurements (CSV)&lt;br&gt;• GET /api/export/processed-measurements&lt;br&gt;• GET /api/export/control-states&lt;br&gt;• GET /api/export/weather-history" style="text;html=1;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1000" width="400" height="260" as="geometry"/>
+        </mxCell>
+
+        <!-- Technology Stack -->
+        <mxCell id="tech-stack" value="&lt;b&gt;技術スタック&lt;/b&gt;&lt;br&gt;&lt;br&gt;• Node.js&lt;br&gt;• Express.js (Webフレームワーク)&lt;br&gt;• pg (PostgreSQL client)&lt;br&gt;• axios (HTTP client)&lt;br&gt;• CommonJS modules (require/module.exports)" style="text;html=1;strokeColor=#666666;fillColor=#f5f5f5;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1150" width="400" height="110" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
