@@ -234,7 +234,7 @@
 
         <!-- Forecast History Chart -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center justify-between mb-4">
             <div>
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white">📈 予測履歴</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400">過去24時間の予測変化</p>
@@ -248,6 +248,17 @@
                 <button class="forecast-history-time-btn px-3 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 hover:bg-brand-blue hover:text-white rounded transition-colors duration-200" data-hours="48">48h</button>
                 <button class="forecast-history-time-btn px-3 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 hover:bg-brand-blue hover:text-white rounded transition-colors duration-200" data-hours="72">72h</button>
               </div>
+            </div>
+          </div>
+
+          <!-- Snapshot Count Selector -->
+          <div class="flex items-center justify-end space-x-2 mb-4">
+            <span class="text-xs text-gray-600 dark:text-gray-400">表示件数:</span>
+            <div class="flex space-x-1">
+              <button class="forecast-history-count-btn px-3 py-1 text-xs font-medium bg-brand-blue text-white rounded transition-colors duration-200" data-count="5">最新5件</button>
+              <button class="forecast-history-count-btn px-3 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 hover:bg-brand-blue hover:text-white rounded transition-colors duration-200" data-count="10">10件</button>
+              <button class="forecast-history-count-btn px-3 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 hover:bg-brand-blue hover:text-white rounded transition-colors duration-200" data-count="20">20件</button>
+              <button class="forecast-history-count-btn px-3 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-700 hover:bg-brand-blue hover:text-white rounded transition-colors duration-200" data-count="all">すべて</button>
             </div>
           </div>
 

@@ -14,6 +14,7 @@ class DashboardController {
     this.forecastHistoryChart = null;
     this.chartTimeframe = '1h'; // 1h, 6h, 24h
     this.forecastHistoryTimeframe = 24; // Hours to display (24h, 48h, 72h)
+    this.forecastHistoryDisplayCount = 5; // Number of snapshots to display (5, 10, 20, or 'all')
     this.nodeStates = new Map();
 
     // Separate data sources for proper management
@@ -156,6 +157,28 @@ class DashboardController {
 
           // Reload forecast history with new timeframe
           await this.loadForecastHistory(hours);
+        }
+      });
+    });
+
+    // Forecast history display count buttons
+    document.querySelectorAll('.forecast-history-count-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const count = e.target.dataset.count;
+        if (count) {
+          // Update display count (convert to number or keep as 'all')
+          this.forecastHistoryDisplayCount = count === 'all' ? 'all' : parseInt(count);
+
+          // Update button states
+          document.querySelectorAll('.forecast-history-count-btn').forEach(b => {
+            b.classList.remove('bg-brand-blue', 'text-white');
+            b.classList.add('bg-gray-200', 'dark:bg-gray-700');
+          });
+          e.target.classList.add('bg-brand-blue', 'text-white');
+          e.target.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+
+          // Reload forecast history with new display count
+          await this.loadForecastHistory(this.forecastHistoryTimeframe);
         }
       });
     });
@@ -1301,7 +1324,15 @@ class DashboardController {
 
       console.log(`📥 Loaded ${snapshots.length} forecast snapshots`);
       this.updateForecastHistoryChart(snapshots);
-      this.updateForecastHistoryStatus(`${snapshots.length}件のスナップショット`);
+
+      // Update status with display count info
+      const displayCount = this.forecastHistoryDisplayCount === 'all'
+        ? snapshots.length
+        : Math.min(this.forecastHistoryDisplayCount, snapshots.length);
+      const statusText = this.forecastHistoryDisplayCount === 'all'
+        ? `${snapshots.length}件のスナップショット`
+        : `${displayCount}/${snapshots.length}件表示`;
+      this.updateForecastHistoryStatus(statusText);
 
     } catch (error) {
       console.error('❌ Failed to load forecast history:', error);
@@ -1325,6 +1356,15 @@ class DashboardController {
       return;
     }
 
+    // Filter snapshots based on display count setting
+    let displaySnapshots = snapshots;
+    if (this.forecastHistoryDisplayCount !== 'all') {
+      displaySnapshots = snapshots.slice(0, this.forecastHistoryDisplayCount);
+      console.log(`📊 Displaying ${displaySnapshots.length} of ${snapshots.length} snapshots`);
+    } else {
+      console.log(`📊 Displaying all ${snapshots.length} snapshots`);
+    }
+
     // Generate color gradient (older = lighter, newer = darker)
     const generateColor = (index, total) => {
       const hue = 25; // Orange hue
@@ -1334,7 +1374,7 @@ class DashboardController {
     };
 
     // Create dataset for each snapshot
-    const datasets = snapshots
+    const datasets = displaySnapshots
       .filter(snap => snap.snapshot?.fullForecast && Array.isArray(snap.snapshot.fullForecast))
       .reverse() // Oldest first for color gradient
       .map((snap, index, array) => {
