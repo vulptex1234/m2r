@@ -750,8 +750,10 @@ class DashboardController {
               }
             },
             ticks: {
-              maxTicksLimit: 20,
-              autoSkip: true
+              maxTicksLimit: 40,
+              autoSkip: false,
+              maxRotation: 45,
+              minRotation: 45
             }
           }
         },
