@@ -64,6 +64,44 @@ function resolveLocation(query) {
   return { lat, lon };
 }
 
+/**
+ * Check if historical data is stale and needs refresh
+ *
+ * Data is considered stale if the most recent record is older than maxAgeMinutes.
+ *
+ * @param {Array} records - Historical weather records
+ * @param {number} maxAgeMinutes - Maximum age in minutes before data is considered stale
+ * @returns {boolean} True if data should be refreshed
+ */
+function isHistoricalDataStale(records, maxAgeMinutes = 30) {
+  if (!records || records.length === 0) {
+    return false; // Empty data is not "stale", it's missing
+  }
+
+  try {
+    // Find the most recent record
+    const latestRecord = records.reduce((latest, current) => {
+      const currentTime = new Date(current.timestamp || current.dateTime).getTime();
+      const latestTime = new Date(latest.timestamp || latest.dateTime).getTime();
+      return currentTime > latestTime ? current : latest;
+    });
+
+    const latestTime = new Date(latestRecord.timestamp || latestRecord.dateTime);
+    const ageMinutes = (Date.now() - latestTime.getTime()) / 1000 / 60;
+
+    const isStale = ageMinutes > maxAgeMinutes;
+
+    if (isStale) {
+      console.log(`📊 [historical] Data is stale: latest record is ${ageMinutes.toFixed(1)} minutes old (threshold: ${maxAgeMinutes} min)`);
+    }
+
+    return isStale;
+  } catch (error) {
+    console.error('[historical] Failed to check data staleness:', error);
+    return false; // On error, don't force refresh
+  }
+}
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -142,7 +180,21 @@ app.get('/api/historical', async (req, res) => {
     // Check if auto-fetch should be prevented (used after data deletion)
     const preventAutoFetch = req.query.preventAutoFetch === 'true';
 
-    if ((records.length === 0 && !preventAutoFetch) || req.query.refresh === 'true') {
+    // Check if database data is stale (older than 30 minutes)
+    const isStale = records.length > 0 && isHistoricalDataStale(records, 30);
+
+    // Fetch from API if:
+    // 1. No data in DB (and not prevented)
+    // 2. Manual refresh requested
+    // 3. Data is stale (and not prevented)
+    const shouldFetchFromAPI =
+      (records.length === 0 && !preventAutoFetch) ||
+      req.query.refresh === 'true' ||
+      (isStale && !preventAutoFetch);
+
+    if (shouldFetchFromAPI) {
+      console.log(`🔄 [historical] Fetching from API: ${isStale ? 'stale data' : records.length === 0 ? 'no data' : 'manual refresh'}`);
+
       const apiData = await fetchHistoricalByHours({
         apiKey,
         lat,
@@ -155,7 +207,7 @@ app.get('/api/historical', async (req, res) => {
 
       await persistGrouped(apiData, { lat, lon, units });
       records = apiData;
-      source = 'api';
+      source = isStale ? 'api (auto-refreshed)' : 'api';
       res.set('Cache-Control', 'no-cache');
     } else {
       res.set('Cache-Control', 'public, max-age=180');
