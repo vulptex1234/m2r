@@ -1518,7 +1518,7 @@ class DashboardController {
     if (!measurements.length) {
       this.elements.recentDataTable.innerHTML = `
         <tr>
-          <td colspan="12" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          <td colspan="14" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
             データがありません
           </td>
         </tr>
@@ -1526,7 +1526,7 @@ class DashboardController {
       return;
     }
 
-    const rows = measurements.map(m => {
+    const rows = measurements.map((m, index) => {
       const time = this.parseTimestamp(m.recordedAt || m.measuredAt || m.timestamp);
       const rateClass = {
         [RateLevel.LOW]: 'bg-green-100 text-green-800',
@@ -1545,8 +1545,34 @@ class DashboardController {
         'error-fallback': 'エラー'
       };
 
+      // Process samples array
+      const samples = m.samples || [];
+      const sampleCount = Array.isArray(samples) ? samples.length : 0;
+      const hasSamples = sampleCount > 0;
+
+      // Format samples for detail row
+      const samplesFormatted = Array.isArray(samples)
+        ? samples.map((s, i) => `[${i+1}] ${typeof s === 'number' ? s.toFixed(2) : s}°C`).join(', ')
+        : '--';
+
+      const detailRowId = `detail-row-${index}`;
+      const toggleBtnId = `toggle-btn-${index}`;
+
       return `
-        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 main-row" data-detail-row="${detailRowId}">
+          <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${hasSamples ? `
+              <button
+                id="${toggleBtnId}"
+                class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                onclick="dashboard.toggleDetailRow('${detailRowId}', '${toggleBtnId}')"
+              >
+                <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            ` : '--'}
+          </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
             ${this.formatDateTime(time)}
           </td>
@@ -1574,6 +1600,9 @@ class DashboardController {
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
             ${m.r !== null && m.r !== undefined ? m.r.toFixed(3) : '--'}
           </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${sampleCount}
+          </td>
           <td class="px-6 py-4 whitespace-nowrap">
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${rateClass[m.targetRate] || 'bg-gray-100 text-gray-800'}">
               ${m.targetRate}
@@ -1586,10 +1615,47 @@ class DashboardController {
             ${m.batteryV ? m.batteryV.toFixed(1) + 'V' : '--'}
           </td>
         </tr>
+        ${hasSamples ? `
+        <tr id="${detailRowId}" class="hidden detail-row bg-blue-50 dark:bg-blue-900/20">
+          <td colspan="14" class="px-6 py-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+              <h4 class="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2">
+                📊 サンプルデータ (variance計算に使用された実測温度値)
+              </h4>
+              <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                合計 ${sampleCount} サンプル (最大48)
+              </div>
+              <div class="text-xs text-gray-700 dark:text-gray-300 font-mono bg-gray-50 dark:bg-gray-900 p-3 rounded max-h-40 overflow-y-auto">
+                ${samplesFormatted}
+              </div>
+            </div>
+          </td>
+        </tr>
+        ` : ''}
       `;
     }).join('');
 
     this.elements.recentDataTable.innerHTML = rows;
+  }
+
+  /**
+   * Toggle detail row visibility
+   */
+  toggleDetailRow(detailRowId, toggleBtnId) {
+    const detailRow = document.getElementById(detailRowId);
+    const toggleBtn = document.getElementById(toggleBtnId);
+
+    if (detailRow && toggleBtn) {
+      const isHidden = detailRow.classList.contains('hidden');
+
+      if (isHidden) {
+        detailRow.classList.remove('hidden');
+        toggleBtn.querySelector('svg').style.transform = 'rotate(90deg)';
+      } else {
+        detailRow.classList.add('hidden');
+        toggleBtn.querySelector('svg').style.transform = 'rotate(0deg)';
+      }
+    }
   }
 
   /**
@@ -1599,7 +1665,7 @@ class DashboardController {
     if (!this.elements.recentDataTable) return;
 
     // Remove "no data" row if present
-    const noDataRow = this.elements.recentDataTable.querySelector('tr td[colspan="12"]');
+    const noDataRow = this.elements.recentDataTable.querySelector('tr td[colspan="14"]');
     if (noDataRow) {
       noDataRow.parentElement.remove();
     }
@@ -1622,9 +1688,37 @@ class DashboardController {
       'error-fallback': 'エラー'
     };
 
+    // Process samples array
+    const samples = result.samples || [];
+    const sampleCount = Array.isArray(samples) ? samples.length : 0;
+    const hasSamples = sampleCount > 0;
+
+    // Format samples for detail row
+    const samplesFormatted = Array.isArray(samples)
+      ? samples.map((s, i) => `[${i+1}] ${typeof s === 'number' ? s.toFixed(2) : s}°C`).join(', ')
+      : '--';
+
+    const timestamp = Date.now();
+    const detailRowId = `detail-row-new-${timestamp}`;
+    const toggleBtnId = `toggle-btn-new-${timestamp}`;
+
     const newRow = document.createElement('tr');
-    newRow.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 bg-blue-50 dark:bg-blue-900';
+    newRow.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 bg-blue-50 dark:bg-blue-900 main-row';
+    newRow.setAttribute('data-detail-row', detailRowId);
     newRow.innerHTML = `
+      <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${hasSamples ? `
+          <button
+            id="${toggleBtnId}"
+            class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            onclick="dashboard.toggleDetailRow('${detailRowId}', '${toggleBtnId}')"
+          >
+            <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </button>
+        ` : '--'}
+      </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
         ${this.formatDateTime(time)}
       </td>
@@ -1652,6 +1746,9 @@ class DashboardController {
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
         ${result.r !== null && result.r !== undefined ? result.r.toFixed(3) : '--'}
       </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${sampleCount}
+      </td>
       <td class="px-6 py-4 whitespace-nowrap">
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${rateClass[result.targetRate] || 'bg-gray-100 text-gray-800'}">
           ${result.targetRate}
@@ -1667,17 +1764,49 @@ class DashboardController {
 
     this.elements.recentDataTable.insertBefore(newRow, this.elements.recentDataTable.firstChild);
 
+    // Add detail row if samples exist
+    if (hasSamples) {
+      const detailRow = document.createElement('tr');
+      detailRow.id = detailRowId;
+      detailRow.className = 'hidden detail-row bg-blue-50 dark:bg-blue-900/20';
+      detailRow.innerHTML = `
+        <td colspan="14" class="px-6 py-4">
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+            <h4 class="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2">
+              📊 サンプルデータ (variance計算に使用された実測温度値)
+            </h4>
+            <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+              合計 ${sampleCount} サンプル (最大48)
+            </div>
+            <div class="text-xs text-gray-700 dark:text-gray-300 font-mono bg-gray-50 dark:bg-gray-900 p-3 rounded max-h-40 overflow-y-auto">
+              ${samplesFormatted}
+            </div>
+          </div>
+        </td>
+      `;
+
+      // Insert detail row after main row
+      this.elements.recentDataTable.insertBefore(detailRow, newRow.nextSibling);
+    }
+
     // Remove highlight after animation
     setTimeout(() => {
       newRow.className = newRow.className.replace('bg-blue-50 dark:bg-blue-900', '');
     }, 2000);
 
-    // Limit table rows
+    // Limit table rows (main rows only)
     const maxRows = 20;
-    const rows = this.elements.recentDataTable.children;
-    if (rows.length > maxRows) {
-      for (let i = maxRows; i < rows.length; i++) {
-        rows[i].remove();
+    const mainRows = Array.from(this.elements.recentDataTable.querySelectorAll('.main-row'));
+    if (mainRows.length > maxRows) {
+      for (let i = maxRows; i < mainRows.length; i++) {
+        const mainRow = mainRows[i];
+        const detailRowId = mainRow.getAttribute('data-detail-row');
+        const detailRow = detailRowId ? document.getElementById(detailRowId) : null;
+
+        mainRow.remove();
+        if (detailRow) {
+          detailRow.remove();
+        }
       }
     }
   }
@@ -1847,7 +1976,7 @@ class DashboardController {
         '時刻', 'ノードID', '実測温度', '予測温度', '誤差', 'システム誤差(sErr)',
         'EWMA(mEwma)', '標準偏差(σDay)', '比率(r)',
         '制御レート', '前回レート', '決定理由',
-        'バッテリー電圧', 'サンプル数', 'モード'
+        'バッテリー電圧', 'サンプル数', 'サンプル配列(variance計算用)', 'モード'
       ]
     ];
 
@@ -1855,11 +1984,16 @@ class DashboardController {
       const time = this.parseTimestamp(m.recordedAt || m.measuredAt || m.timestamp);
 
       // Format samples array for CSV
-      let samplesInfo = '';
+      let sampleCount = '';
+      let samplesArrayStr = '';
+
       if (m.samples && Array.isArray(m.samples)) {
-        samplesInfo = m.samples.length.toString();
+        sampleCount = m.samples.length.toString();
+        // Format: [val1, val2, val3, ...]
+        samplesArrayStr = `"[${m.samples.map(s => typeof s === 'number' ? s.toFixed(2) : s).join(', ')}]"`;
       } else if (m.samples && typeof m.samples === 'object') {
-        samplesInfo = JSON.stringify(m.samples).length > 0 ? 'Object' : '';
+        sampleCount = 'Object';
+        samplesArrayStr = `"${JSON.stringify(m.samples)}"`;
       }
 
       csvData.push([
@@ -1876,7 +2010,8 @@ class DashboardController {
         m.previousRate || '',
         m.reason || '',
         m.batteryV !== null && m.batteryV !== undefined ? m.batteryV : '',
-        samplesInfo,
+        sampleCount,
+        samplesArrayStr,
         m.mode || ''
       ]);
     });
@@ -2519,12 +2654,15 @@ class DashboardController {
 
 // Initialize dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
-  const dashboard = new DashboardController();
-  await dashboard.initialize();
+  const dashboardInstance = new DashboardController();
+  await dashboardInstance.initialize();
 
   // Initialize export manager
   exportManager.init();
+
+  // Export instance for inline onclick handlers
+  window.dashboard = dashboardInstance;
 });
 
-// Export for debugging
-window.dashboard = DashboardController;
+// Export class for debugging
+window.DashboardController = DashboardController;
