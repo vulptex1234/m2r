@@ -179,28 +179,58 @@ async function getRecentProcessedMeasurements({ limit = 50, nodeId = null } = {}
   const pool = getPool();
   const safeLimit = Math.min(500, Math.max(1, Number(limit) || 50));
 
-  let query = `SELECT * FROM processed_measurements`;
+  // JOIN with control_states to get calculation variables
+  let query = `
+    SELECT
+      pm.*,
+      cs.m_ewma,
+      cs.sigma_day,
+      cs.previous_rate,
+      cs.reason,
+      cs.samples,
+      cs.mode
+    FROM processed_measurements pm
+    LEFT JOIN control_states cs ON pm.node_id = cs.node_id
+  `;
+
   const params = [];
   if (nodeId) {
     params.push(nodeId);
-    query += ` WHERE node_id = $${params.length}`;
+    query += ` WHERE pm.node_id = $${params.length}`;
   }
   params.push(safeLimit);
-  query += ` ORDER BY COALESCE(recorded_at, created_at) DESC LIMIT $${params.length}`;
+  query += ` ORDER BY COALESCE(pm.recorded_at, pm.created_at) DESC LIMIT $${params.length}`;
 
   const { rows } = await pool.query(query, params);
-  return rows.map(row => ({
-    id: row.id,
-    nodeId: row.node_id,
-    observedC: row.observed_c != null ? Number(row.observed_c) : null,
-    forecastC: row.forecast_c != null ? Number(row.forecast_c) : null,
-    absError: row.abs_error != null ? Number(row.abs_error) : null,
-    batteryV: row.battery_v != null ? Number(row.battery_v) : null,
-    sErr: row.s_err != null ? Number(row.s_err) : null,
-    targetRate: row.target_rate,
-    recordedAt: row.recorded_at ? row.recorded_at.toISOString() : null,
-    createdAt: row.created_at ? row.created_at.toISOString() : null
-  }));
+  return rows.map(row => {
+    // Calculate r = mEwma / sigmaDay
+    const mEwma = row.m_ewma != null ? Number(row.m_ewma) : null;
+    const sigmaDay = row.sigma_day != null ? Number(row.sigma_day) : null;
+    const r = (mEwma !== null && sigmaDay !== null && sigmaDay > 0)
+      ? parseFloat((mEwma / sigmaDay).toFixed(4))
+      : null;
+
+    return {
+      id: row.id,
+      nodeId: row.node_id,
+      observedC: row.observed_c != null ? Number(row.observed_c) : null,
+      forecastC: row.forecast_c != null ? Number(row.forecast_c) : null,
+      absError: row.abs_error != null ? Number(row.abs_error) : null,
+      batteryV: row.battery_v != null ? Number(row.battery_v) : null,
+      sErr: row.s_err != null ? Number(row.s_err) : null,
+      targetRate: row.target_rate,
+      recordedAt: row.recorded_at ? row.recorded_at.toISOString() : null,
+      createdAt: row.created_at ? row.created_at.toISOString() : null,
+      // Calculation process variables
+      mEwma,
+      sigmaDay,
+      r,
+      previousRate: row.previous_rate,
+      reason: row.reason,
+      samples: row.samples || null,
+      mode: row.mode
+    };
+  });
 }
 
 async function getControlState(nodeId) {

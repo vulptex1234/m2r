@@ -1518,7 +1518,7 @@ class DashboardController {
     if (!measurements.length) {
       this.elements.recentDataTable.innerHTML = `
         <tr>
-          <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+          <td colspan="12" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
             データがありません
           </td>
         </tr>
@@ -1532,6 +1532,17 @@ class DashboardController {
         [RateLevel.LOW]: 'bg-green-100 text-green-800',
         [RateLevel.MEDIUM]: 'bg-yellow-100 text-yellow-800',
         [RateLevel.HIGH]: 'bg-red-100 text-red-800'
+      };
+
+      // Format reason text for display
+      const reasonText = {
+        'escalate': 'エスカレート',
+        'de-escalate': 'デエスカレート',
+        'hold': '維持',
+        'safety-floor': '安全下限',
+        'baseline-threshold': 'ベースライン',
+        'forecast-unavailable-fallback': '予測なし',
+        'error-fallback': 'エラー'
       };
 
       return `
@@ -1551,10 +1562,25 @@ class DashboardController {
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
             ${m.absError ? m.absError.toFixed(2) : '--'}
           </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${m.sErr ? m.sErr.toFixed(3) : '--'}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${m.mEwma !== null && m.mEwma !== undefined ? m.mEwma.toFixed(3) : '--'}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${m.sigmaDay !== null && m.sigmaDay !== undefined ? m.sigmaDay.toFixed(3) : '--'}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${m.r !== null && m.r !== undefined ? m.r.toFixed(3) : '--'}
+          </td>
           <td class="px-6 py-4 whitespace-nowrap">
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${rateClass[m.targetRate] || 'bg-gray-100 text-gray-800'}">
               ${m.targetRate}
             </span>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+            ${m.reason ? (reasonText[m.reason] || m.reason) : '--'}
           </td>
           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
             ${m.batteryV ? m.batteryV.toFixed(1) + 'V' : '--'}
@@ -1573,7 +1599,7 @@ class DashboardController {
     if (!this.elements.recentDataTable) return;
 
     // Remove "no data" row if present
-    const noDataRow = this.elements.recentDataTable.querySelector('tr td[colspan="7"]');
+    const noDataRow = this.elements.recentDataTable.querySelector('tr td[colspan="12"]');
     if (noDataRow) {
       noDataRow.parentElement.remove();
     }
@@ -1583,6 +1609,17 @@ class DashboardController {
       [RateLevel.LOW]: 'bg-green-100 text-green-800',
       [RateLevel.MEDIUM]: 'bg-yellow-100 text-yellow-800',
       [RateLevel.HIGH]: 'bg-red-100 text-red-800'
+    };
+
+    // Format reason text for display
+    const reasonText = {
+      'escalate': 'エスカレート',
+      'de-escalate': 'デエスカレート',
+      'hold': '維持',
+      'safety-floor': '安全下限',
+      'baseline-threshold': 'ベースライン',
+      'forecast-unavailable-fallback': '予測なし',
+      'error-fallback': 'エラー'
     };
 
     const newRow = document.createElement('tr');
@@ -1603,10 +1640,25 @@ class DashboardController {
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
         ${result.absError ? result.absError.toFixed(2) : '--'}
       </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${result.sErr ? result.sErr.toFixed(3) : '--'}
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${result.mEwma !== null && result.mEwma !== undefined ? result.mEwma.toFixed(3) : '--'}
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${result.sigmaDay !== null && result.sigmaDay !== undefined ? result.sigmaDay.toFixed(3) : '--'}
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${result.r !== null && result.r !== undefined ? result.r.toFixed(3) : '--'}
+      </td>
       <td class="px-6 py-4 whitespace-nowrap">
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${rateClass[result.targetRate] || 'bg-gray-100 text-gray-800'}">
           ${result.targetRate}
         </span>
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+        ${result.reason ? (reasonText[result.reason] || result.reason) : '--'}
       </td>
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
         ${result.batteryV ? result.batteryV.toFixed(1) + 'V' : '--'}
@@ -1791,20 +1843,41 @@ class DashboardController {
     }
 
     const csvData = [
-      ['時刻', 'ノードID', '実測温度', '予測温度', '誤差', '制御レート', 'バッテリー電圧', 'システム誤差']
+      [
+        '時刻', 'ノードID', '実測温度', '予測温度', '誤差', 'システム誤差(sErr)',
+        'EWMA(mEwma)', '標準偏差(σDay)', '比率(r)',
+        '制御レート', '前回レート', '決定理由',
+        'バッテリー電圧', 'サンプル数', 'モード'
+      ]
     ];
 
     this.lastMeasurements.forEach(m => {
       const time = this.parseTimestamp(m.recordedAt || m.measuredAt || m.timestamp);
+
+      // Format samples array for CSV
+      let samplesInfo = '';
+      if (m.samples && Array.isArray(m.samples)) {
+        samplesInfo = m.samples.length.toString();
+      } else if (m.samples && typeof m.samples === 'object') {
+        samplesInfo = JSON.stringify(m.samples).length > 0 ? 'Object' : '';
+      }
+
       csvData.push([
         this.formatDateTime(time),
         m.nodeId,
-        m.observedC,
-        m.forecastC || '',
-        m.absError || '',
-        m.targetRate,
-        m.batteryV || '',
-        m.sErr || ''
+        m.observedC !== null && m.observedC !== undefined ? m.observedC : '',
+        m.forecastC !== null && m.forecastC !== undefined ? m.forecastC : '',
+        m.absError !== null && m.absError !== undefined ? m.absError : '',
+        m.sErr !== null && m.sErr !== undefined ? m.sErr : '',
+        m.mEwma !== null && m.mEwma !== undefined ? m.mEwma : '',
+        m.sigmaDay !== null && m.sigmaDay !== undefined ? m.sigmaDay : '',
+        m.r !== null && m.r !== undefined ? m.r : '',
+        m.targetRate || '',
+        m.previousRate || '',
+        m.reason || '',
+        m.batteryV !== null && m.batteryV !== undefined ? m.batteryV : '',
+        samplesInfo,
+        m.mode || ''
       ]);
     });
 
